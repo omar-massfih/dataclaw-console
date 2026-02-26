@@ -1,17 +1,17 @@
 import { FormPageLayout } from '../../components/layouts';
 import { Button, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
-import { ConnectorJsonEditor } from './ConnectorJsonEditor';
-import type { ConnectorFormDraft, EditorMode } from './types';
+import { ConnectorSettingsFields } from './ConnectorSettingsFields';
+import type { ConnectorFormDraft, ConnectorFormFieldError,EditorMode } from './types';
 
 interface ConnectorFormProps {
   mode: Extract<EditorMode, 'create' | 'edit'>;
   draft: ConnectorFormDraft;
   isSaving: boolean;
   formError: string | null;
-  jsonParseError: string | null;
+  formFieldError: ConnectorFormFieldError | null;
   onChange: <K extends keyof ConnectorFormDraft>(field: K, value: ConnectorFormDraft[K]) => void;
+  onUpdateSettingsField: (field: string, value: string | boolean) => void;
   onKindChange: (kind: ConnectorFormDraft['kind']) => void;
-  onResetSettingsTemplate: () => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -21,10 +21,10 @@ export function ConnectorForm({
   draft,
   isSaving,
   formError,
-  jsonParseError,
+  formFieldError,
   onChange,
+  onUpdateSettingsField,
   onKindChange,
-  onResetSettingsTemplate,
   onSave,
   onCancel,
 }: ConnectorFormProps) {
@@ -50,11 +50,13 @@ export function ConnectorForm({
               className="field-input"
               value={draft.kind}
               onChange={(event) => onKindChange(event.target.value as ConnectorFormDraft['kind'])}
+              disabled={mode === 'edit'}
             >
               <option value="sql_reader">sql_reader</option>
               <option value="milvus">milvus</option>
               <option value="kafka">kafka</option>
             </select>
+            {mode === 'edit' ? <span className="field-hint">Kind is locked in edit mode.</span> : null}
           </label>
           <label className="field-checkbox">
             <input
@@ -69,22 +71,25 @@ export function ConnectorForm({
 
       <Surface as="section">
         <Stack gap={12}>
-          <Inline justify="between" align="center" wrap gap={12}>
-            <Text as="h3" variant="h3" weight="bold">
-              Settings
-            </Text>
-            <Button type="button" variant="secondary" onClick={onResetSettingsTemplate} disabled={isSaving}>
-              Reset to {draft.kind} template
-            </Button>
-          </Inline>
-          <ConnectorJsonEditor
-            value={draft.settingsText}
-            onChange={(value) => onChange('settingsText', value)}
-            error={jsonParseError}
+          <Text as="h3" variant="h3" weight="bold">
+            Settings
+          </Text>
+          <ConnectorSettingsFields
+            settings={draft.settings}
             disabled={isSaving}
+            fieldError={formFieldError}
+            onChange={onUpdateSettingsField}
           />
         </Stack>
       </Surface>
+
+      {formFieldError ? (
+        <Surface as="section" className="connectors-error" padding={16}>
+          <Text tone="danger" weight="bold">
+            {formFieldError.message}
+          </Text>
+        </Surface>
+      ) : null}
 
       {formError ? (
         <Surface as="section" className="connectors-error" padding={16}>
@@ -99,7 +104,7 @@ export function ConnectorForm({
   const actions = (
     <Inline justify="between" align="center" wrap gap={12}>
       <Text variant="small" tone="muted">
-        {mode === 'edit' ? 'Connector ID is locked in edit mode.' : 'Create a new connector draft.'}
+        {mode === 'edit' ? 'Connector ID and kind are locked in edit mode.' : 'Create a new connector draft.'}
       </Text>
       <Inline gap={12}>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>

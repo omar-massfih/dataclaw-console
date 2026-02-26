@@ -3,6 +3,7 @@ import { ConnectorForm } from './ConnectorForm';
 import type {
   ConnectorDraft,
   ConnectorFormDraft,
+  ConnectorFormFieldError,
   EditorMode,
   ExportConnectorsResponse,
   ValidateConnectorsResponse,
@@ -13,17 +14,18 @@ interface ConnectorDetailPanelProps {
   selectedConnector: ConnectorDraft | null;
   draft: ConnectorFormDraft;
   formError: string | null;
-  jsonParseError: string | null;
+  formFieldError: ConnectorFormFieldError | null;
   pageError: string | null;
   validateResult: ValidateConnectorsResponse | null;
   exportResult: ExportConnectorsResponse | null;
+  reloadWarning: string | null;
   isSaving: boolean;
   isDeleting: boolean;
   onBeginEdit: () => void;
   onDelete: () => void;
   onChangeDraft: <K extends keyof ConnectorFormDraft>(field: K, value: ConnectorFormDraft[K]) => void;
+  onUpdateSettingsField: (field: string, value: string | boolean) => void;
   onKindChange: (kind: ConnectorFormDraft['kind']) => void;
-  onResetSettingsTemplate: () => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -34,17 +36,18 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
     selectedConnector,
     draft,
     formError,
-    jsonParseError,
+    formFieldError,
     pageError,
     validateResult,
     exportResult,
+    reloadWarning,
     isSaving,
     isDeleting,
     onBeginEdit,
     onDelete,
     onChangeDraft,
+    onUpdateSettingsField,
     onKindChange,
-    onResetSettingsTemplate,
     onSave,
     onCancel,
   } = props;
@@ -56,10 +59,10 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
         draft={draft}
         isSaving={isSaving}
         formError={formError}
-        jsonParseError={jsonParseError}
+        formFieldError={formFieldError}
         onChange={onChangeDraft}
+        onUpdateSettingsField={onUpdateSettingsField}
         onKindChange={onKindChange}
-        onResetSettingsTemplate={onResetSettingsTemplate}
         onSave={onSave}
         onCancel={onCancel}
       />
@@ -82,6 +85,10 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
                 </Text>
                 <Text tone="muted">
                   {selectedConnector.kind} · {selectedConnector.enabled ? 'enabled' : 'disabled'}
+                </Text>
+                <Text tone="muted" variant="small">
+                  runtime_active={String(Boolean(selectedConnector.runtime_active))} · runtime_loaded=
+                  {String(Boolean(selectedConnector.runtime_loaded))}
                 </Text>
               </div>
               <Inline gap={12}>
@@ -120,6 +127,12 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
           <Text tone="danger" weight="bold">
             {pageError}
           </Text>
+        </Surface>
+      ) : null}
+
+      {reloadWarning ? (
+        <Surface as="section" className="connectors-warning" padding={16}>
+          <Text weight="bold">{reloadWarning}</Text>
         </Surface>
       ) : null}
 

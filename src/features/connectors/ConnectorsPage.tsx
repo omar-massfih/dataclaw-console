@@ -1,5 +1,5 @@
 import { ListDetailLayout } from '../../components/layouts';
-import { Button,Inline, Stack, Text } from '../../components/primitives';
+import { Button, Inline, Stack, Surface, Text } from '../../components/primitives';
 import { ConnectorDetailPanel } from './ConnectorDetailPanel';
 import { ConnectorList } from './ConnectorList';
 import { useConnectorsPage } from './useConnectorsPage';
@@ -25,17 +25,18 @@ export function ConnectorsPage() {
       selectedConnector={state.selectedConnector}
       draft={state.formDraft}
       formError={state.formError}
-      jsonParseError={state.jsonParseError}
+      formFieldError={state.formFieldError}
       pageError={state.pageError}
       validateResult={state.validateResult}
       exportResult={state.exportResult}
+      reloadWarning={state.reloadWarning}
       isSaving={state.isSaving}
       isDeleting={state.isDeleting}
       onBeginEdit={state.beginEdit}
       onDelete={() => void state.removeSelected()}
       onChangeDraft={state.updateFormField}
+      onUpdateSettingsField={state.updateSettingsField}
       onKindChange={state.setFormKind}
-      onResetSettingsTemplate={state.resetFormSettingsToTemplate}
       onSave={() => void state.saveForm()}
       onCancel={state.cancelForm}
     />
@@ -64,6 +65,33 @@ export function ConnectorsPage() {
           </Button>
         </Inline>
       </Inline>
+
+      <Surface as="section" className="connectors-runtime-summary" padding={16}>
+        <Stack gap={8}>
+          <Text as="h3" variant="h3" weight="bold">
+            Runtime visibility
+          </Text>
+          <Text variant="small" tone="muted">
+            Generation {state.runtimeInfo?.generation ?? 0} · active connectors:{' '}
+            {state.runtimeInfo?.active_connector_ids.length ?? 0}
+          </Text>
+          <Text variant="small" tone="muted">
+            Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} ·
+            trigger={state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason=
+            {state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
+          </Text>
+          <Text variant="small" tone="muted">
+            Import: attempted={String(state.importState?.attempted ?? false)} · succeeded=
+            {String(state.importState?.succeeded ?? false)} · result={state.importState?.last_import_result ?? 'unknown'}
+          </Text>
+        </Stack>
+      </Surface>
+
+      {state.reloadWarning ? (
+        <Surface as="section" className="connectors-warning" padding={16}>
+          <Text weight="bold">{state.reloadWarning}</Text>
+        </Surface>
+      ) : null}
 
       <ListDetailLayout listTitle="Connectors" detailTitle="Details" list={list} detail={detail} />
     </Stack>

@@ -63,9 +63,14 @@ export function ConnectorList({
                       {connector.kind}
                     </Text>
                   </span>
-                  <span className={`status-chip ${connector.enabled ? 'status-success' : 'status-warning'}`}>
-                    {connector.enabled ? 'enabled' : 'disabled'}
-                  </span>
+                  <Inline gap={8} align="center">
+                    <span className={`status-chip ${connector.enabled ? 'status-success' : 'status-warning'}`}>
+                      {connector.enabled ? 'enabled' : 'disabled'}
+                    </span>
+                    {connector.runtime_active ? (
+                      <span className="status-chip status-info connectors-runtime-chip">runtime active</span>
+                    ) : null}
+                  </Inline>
                 </button>
               </li>
             );

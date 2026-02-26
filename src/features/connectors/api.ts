@@ -5,15 +5,24 @@ import type {
   ConnectorDraft,
   ConnectorDraftInput,
   ConnectorsListResponse,
+  CreateOrUpdateConnectorResponse,
+  DeleteConnectorResponse,
   ExportConnectorsResponse,
   ValidateConnectorsResponse,
 } from './types';
 
 type ApiResult<T> =
   | { data: T; error: null }
-  | { data: null; error: ConnectorApiError };
+  | { data: T | null; error: ConnectorApiError };
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
+function tryExtractErrorEnvelope(payload: unknown): ApiErrorEnvelope | null {
+  if (!payload || typeof payload !== 'object' || !('error' in payload)) return null;
+  const envelope = payload as ApiErrorEnvelope;
+  if (!envelope.error || typeof envelope.error.message !== 'string') return null;
+  return envelope;
+}
+
+async function requestJson<T>(path: string, init?: RequestInit, options?: { preserveDataOnError?: boolean }): Promise<ApiResult<T>> {
   const { apiBaseUrl } = getEnv();
 
   try {
@@ -29,9 +38,9 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<ApiResu
     const parsed = text ? (JSON.parse(text) as unknown) : null;
 
     if (!response.ok) {
-      const envelope = parsed as ApiErrorEnvelope | null;
+      const envelope = tryExtractErrorEnvelope(parsed);
       return {
-        data: null,
+        data: options?.preserveDataOnError ? (parsed as T) : null,
         error: {
           message: envelope?.error?.message ?? `Request failed with status ${response.status}`,
           code: envelope?.error?.code,
@@ -61,25 +70,26 @@ export function getConnector(connectorId: string) {
 }
 
 export function createConnector(payload: ConnectorDraftInput) {
-  return requestJson<ConnectorDraft>('/api/config/connectors', {
+  return requestJson<CreateOrUpdateConnectorResponse>('/api/config/connectors', {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  }, { preserveDataOnError: true });
 }
 
 export function replaceConnector(connectorId: string, payload: ConnectorDraftInput) {
-  return requestJson<ConnectorDraft>(`/api/config/connectors/${encodeURIComponent(connectorId)}`, {
+  return requestJson<CreateOrUpdateConnectorResponse>(`/api/config/connectors/${encodeURIComponent(connectorId)}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
-  });
+  }, { preserveDataOnError: true });
 }
 
 export function deleteConnector(connectorId: string) {
-  return requestJson<{ deleted: true; id: string }>(
+  return requestJson<DeleteConnectorResponse>(
     `/api/config/connectors/${encodeURIComponent(connectorId)}`,
     {
       method: 'DELETE',
     },
+    { preserveDataOnError: true },
   );
 }
 
