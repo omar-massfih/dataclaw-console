@@ -13,6 +13,8 @@ describe('App', () => {
 
     render(<App />);
 
+    expect(screen.getByLabelText(/sidebar/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/primary navigation/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /available domains \(mvp\)/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /^available domains$/i })).toBeInTheDocument();
   });
