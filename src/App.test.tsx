@@ -5,7 +5,7 @@ import App from './App';
 import * as domainsApi from './features/domains/api';
 
 describe('App', () => {
-  it('renders domains mvp heading', async () => {
+  it('renders connectors page heading inside app shell', async () => {
     vi.spyOn(domainsApi, 'fetchAvailableDomains').mockResolvedValue({
       data: { status: 'healthy', ready: true, domains: ['sql'] },
       error: null,
@@ -15,7 +15,7 @@ describe('App', () => {
 
     expect(screen.getByLabelText(/sidebar/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/primary navigation/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /available domains \(mvp\)/i })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: /^available domains$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /connectors config \(v1\)/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /^connectors$/i })).toBeInTheDocument();
   });
 });

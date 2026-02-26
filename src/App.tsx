@@ -1,6 +1,6 @@
 import { AppShell } from './components/layouts';
 import { Inline, Stack, Surface, Text } from './components/primitives';
-import { AvailableDomainsPanel } from './features/domains';
+import { ConnectorsPage } from './features/connectors';
 
 export default function App() {
   const sidebar = (
@@ -16,12 +16,12 @@ export default function App() {
           <ul className="sidebar-nav" aria-label="Primary navigation">
             <li className="sidebar-nav__item">
               <Text as="span" weight="bold">
-                Domains
+                Connectors
               </Text>
             </li>
             <li className="sidebar-nav__item">
               <Text as="span" tone="muted">
-                Connectors (coming soon)
+                Domains
               </Text>
             </li>
             <li className="sidebar-nav__item">
@@ -42,16 +42,16 @@ export default function App() {
           DataClaw Console
         </Text>
         <Text as="h1" variant="h1" weight="bold" id="app-title">
-          Available domains (MVP)
+          Connectors Config (V1)
         </Text>
         <Text tone="muted">
-          Built with primitives plus reusable page templates. App shell now standardizes sidebar,
-          header, and content composition.
+          Built with primitives plus reusable page templates. Manage connector drafts, validate
+          config, and export YAML from the backend config API.
         </Text>
         <Inline gap={12} wrap>
           <span className="status-chip status-primary">app shell</span>
-          <span className="status-chip status-success">primitives</span>
-          <span className="status-chip status-warning">mvp</span>
+          <span className="status-chip status-success">connectors api</span>
+          <span className="status-chip status-warning">yaml export</span>
         </Inline>
       </Stack>
     </Surface>
@@ -60,7 +60,7 @@ export default function App() {
   return (
     <main className="app-shell">
       <AppShell sidebar={sidebar} header={header}>
-        <AvailableDomainsPanel />
+        <ConnectorsPage />
       </AppShell>
     </main>
   );
