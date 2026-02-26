@@ -1,5 +1,5 @@
 import { AppShell } from './components/layouts';
-import { Inline, Stack, Surface, Text } from './components/primitives';
+import { Stack, Surface, Text } from './components/primitives';
 import { ConnectorsPage } from './features/connectors';
 
 export default function App() {
@@ -35,31 +35,9 @@ export default function App() {
     </Stack>
   );
 
-  const header = (
-    <Surface as="section" className="hero-card" elevated aria-labelledby="app-title">
-      <Stack gap={16}>
-        <Text as="p" variant="small" weight="bold" className="eyebrow">
-          DataClaw Console
-        </Text>
-        <Text as="h1" variant="h1" weight="bold" id="app-title">
-          Connectors Config (V1)
-        </Text>
-        <Text tone="muted">
-          Built with primitives plus reusable page templates. Manage connector drafts, validate
-          config, and export YAML from the backend config API.
-        </Text>
-        <Inline gap={12} wrap>
-          <span className="status-chip status-primary">app shell</span>
-          <span className="status-chip status-success">connectors api</span>
-          <span className="status-chip status-warning">yaml export</span>
-        </Inline>
-      </Stack>
-    </Surface>
-  );
-
   return (
     <main className="app-shell">
-      <AppShell sidebar={sidebar} header={header}>
+      <AppShell sidebar={sidebar}>
         <ConnectorsPage />
       </AppShell>
     </main>
