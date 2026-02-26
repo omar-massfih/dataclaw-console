@@ -1,14 +1,19 @@
 import { render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 
 import App from './App';
+import * as domainsApi from './features/domains/api';
 
 describe('App', () => {
-  it('renders design system heading and contract guidance', () => {
+  it('renders domains mvp heading', async () => {
+    vi.spyOn(domainsApi, 'fetchAvailableDomains').mockResolvedValue({
+      data: { status: 'healthy', ready: true, domains: ['sql'] },
+      error: null,
+    });
+
     render(<App />);
 
-    expect(
-      screen.getByRole('heading', { name: /small design system contract/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/lock spacing, type, semantic colors/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /available domains \(mvp\)/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /^available domains$/i })).toBeInTheDocument();
   });
 });
