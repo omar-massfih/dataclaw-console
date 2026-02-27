@@ -53,10 +53,11 @@ function renderBlockNodes(nodes: MarkdownBlockNode[], keyPrefix: string): ReactN
     }
     if (node.type === 'list') {
       const ListTag = node.ordered ? 'ol' : 'ul';
+      const start = node.ordered ? node.items[0]?.ordinal : undefined;
       return (
-        <ListTag key={key}>
+        <ListTag key={key} start={start}>
           {node.items.map((item, itemIndex) => (
-            <li key={`${key}-item-${itemIndex}`}>
+            <li key={`${key}-item-${itemIndex}`} value={item.ordinal}>
               {item.checked !== null ? (
                 <input type="checkbox" checked={item.checked} readOnly aria-label={item.checked ? 'checked task' : 'unchecked task'} />
               ) : null}

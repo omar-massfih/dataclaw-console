@@ -26,6 +26,25 @@ describe('parseMarkdown', () => {
     const blocks = parseMarkdown('- one\n- two\n\n1. alpha\n2. beta');
     expect(blocks[0]).toMatchObject({ type: 'list', ordered: false });
     expect(blocks[1]).toMatchObject({ type: 'list', ordered: true });
+    const orderedList = blocks[1];
+    if (orderedList.type !== 'list') {
+      throw new Error('expected ordered list');
+    }
+    expect(orderedList.items[0]?.ordinal).toBe(1);
+    expect(orderedList.items[1]?.ordinal).toBe(2);
+  });
+
+  it('preserves non-default ordered list numbering', () => {
+    const blocks = parseMarkdown('3. third\n4. fourth\n\n1. one\n3. three');
+    const firstList = blocks[0];
+    const secondList = blocks[1];
+    if (firstList?.type !== 'list' || secondList?.type !== 'list') {
+      throw new Error('expected ordered lists');
+    }
+    expect(firstList.items[0]?.ordinal).toBe(3);
+    expect(firstList.items[1]?.ordinal).toBe(4);
+    expect(secondList.items[0]?.ordinal).toBe(1);
+    expect(secondList.items[1]?.ordinal).toBe(3);
   });
 
   it('parses task list items', () => {

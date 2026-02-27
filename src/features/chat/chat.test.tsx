@@ -242,6 +242,34 @@ describe('ChatPage', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer noopener');
   });
 
+  it('preserves ordered list numbering in assistant markdown', async () => {
+    mockChatFetch({
+      chatResponse: createSseResponse([
+        'data: {"choices":[{"delta":{"content":"3. third\\n4. fourth\\n\\n1. one\\n3. three"}}]}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    });
+
+    render(<ChatHarness />);
+    expect(await screen.findByLabelText(/^model$/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: 'ordered list' } });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    const orderedLists = await screen.findAllByRole('list');
+    const markdownOrderedLists = orderedLists.filter((list) => list.tagName === 'OL');
+    expect(markdownOrderedLists).toHaveLength(2);
+    expect(markdownOrderedLists[0]).toHaveAttribute('start', '3');
+    expect(markdownOrderedLists[1]).toHaveAttribute('start', '1');
+
+    const firstItems = markdownOrderedLists[0].querySelectorAll('li');
+    const secondItems = markdownOrderedLists[1].querySelectorAll('li');
+    expect(firstItems[0]).toHaveAttribute('value', '3');
+    expect(firstItems[1]).toHaveAttribute('value', '4');
+    expect(secondItems[0]).toHaveAttribute('value', '1');
+    expect(secondItems[1]).toHaveAttribute('value', '3');
+  });
+
   it('allows collapsing and expanding progress details', async () => {
     mockChatFetch({
       chatResponse: createSseResponse([

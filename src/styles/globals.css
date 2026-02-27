@@ -411,8 +411,10 @@ a {
 .chat-message__content--markdown ol {
   margin: 0;
   padding-inline-start: var(--space-24);
-  display: grid;
-  gap: var(--space-4);
+}
+
+.chat-message__content--markdown li + li {
+  margin-top: var(--space-4);
 }
 
 .chat-message__content--markdown li {

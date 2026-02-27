@@ -7,6 +7,7 @@ export type MarkdownInlineNode =
 
 export interface MarkdownListItem {
   checked: boolean | null;
+  ordinal?: number;
   children: MarkdownInlineNode[];
 }
 
@@ -221,6 +222,7 @@ export function parseMarkdown(content: string): MarkdownBlockNode[] {
           if (!orderedMatch) break;
           items.push({
             checked: null,
+            ordinal: Number.parseInt(orderedMatch[1], 10),
             children: parseInlines(orderedMatch[2].trim()),
           });
         } else {
