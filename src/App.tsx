@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import agentAiLogo from './assets/agent-ai.svg';
 import chainLogo from './assets/chain.svg';
 import chatLogo from './assets/chat.svg';
+import loopDiamondLogo from './assets/loop-diamond.svg';
 import { AppShell } from './components/layouts';
 import { ChatPage, useChatSession } from './features/chat';
 import { ConnectorsPage } from './features/connectors';
@@ -36,6 +37,10 @@ function ChatIcon() {
   return <img src={chatLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
 }
 
+function RunsIcon() {
+  return <img src={loopDiamondLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
+}
+
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={expanded ? '' : 'is-collapsed'}>
@@ -51,6 +56,10 @@ function getIcon(id: NavItem['id']) {
 
   if (id === 'domains') {
     return <DomainsIcon />;
+  }
+
+  if (id === 'runs') {
+    return <RunsIcon />;
   }
 
   return <ChatIcon />;
