@@ -44,6 +44,14 @@ interface AgentMetadata {
   domainDisplayName?: string;
 }
 
+function normalizeNonEmptyText(value: string | null | undefined): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export function useChatSession() {
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [inputText, setInputText] = useState('');
@@ -162,21 +170,45 @@ export function useChatSession() {
     status: 'running' | 'done',
     timestamp: number,
     metadata?: AgentMetadata,
+    eventAgentName?: string,
   ) => {
     setAssistantProgressByMessageId((current) => {
       const existing = current[messageId] ?? createEmptyAssistantProgressState(FALLBACK_AGENT_LABEL, true);
       const history = [...existing.history];
+      const resolvedAgentLabel =
+        normalizeNonEmptyText(metadata?.specialistName) ??
+        normalizeNonEmptyText(eventAgentName) ??
+        normalizeNonEmptyText(existing.agentLabel) ??
+        FALLBACK_AGENT_NAME;
 
       if (history.length === 0) {
-        const candidateAgentName = existing.agentLabel?.trim();
         history.push({
-          agentName: candidateAgentName && candidateAgentName.length > 0 ? candidateAgentName : FALLBACK_AGENT_NAME,
+          agentName: resolvedAgentLabel,
           specialistName: metadata?.specialistName,
           domainKey: metadata?.domainKey,
           domainDisplayName: metadata?.domainDisplayName,
           startedAt: timestamp,
           tools: [],
         });
+      } else {
+        const activeAgent = history[history.length - 1];
+        const activeLabel =
+          normalizeNonEmptyText(activeAgent.specialistName) ??
+          normalizeNonEmptyText(activeAgent.agentName) ??
+          FALLBACK_AGENT_NAME;
+        if (resolvedAgentLabel !== activeLabel) {
+          if (activeAgent.endedAt === undefined) {
+            history[history.length - 1] = { ...activeAgent, endedAt: timestamp };
+          }
+          history.push({
+            agentName: resolvedAgentLabel,
+            specialistName: metadata?.specialistName,
+            domainKey: metadata?.domainKey,
+            domainDisplayName: metadata?.domainDisplayName,
+            startedAt: timestamp,
+            tools: [],
+          });
+        }
       }
 
       if (status === 'running') {
@@ -211,6 +243,7 @@ export function useChatSession() {
         ...current,
         [messageId]: {
           ...existing,
+          agentLabel: metadata?.specialistName ?? existing.agentLabel,
           history,
           isToolsLoading: hasRunningTools,
         },
@@ -302,6 +335,7 @@ export function useChatSession() {
               ? event.domain_display_name.trim()
               : undefined,
         },
+        typeof event.agent === 'string' ? event.agent : undefined,
       );
       return;
     }
@@ -318,10 +352,11 @@ export function useChatSession() {
             : undefined,
         domainKey: typeof event.domain_key === 'string' && event.domain_key.trim().length > 0 ? event.domain_key.trim() : undefined,
         domainDisplayName:
-          typeof event.domain_display_name === 'string' && event.domain_display_name.trim().length > 0
+        typeof event.domain_display_name === 'string' && event.domain_display_name.trim().length > 0
             ? event.domain_display_name.trim()
             : undefined,
       },
+      typeof event.agent === 'string' ? event.agent : undefined,
     );
   };
 

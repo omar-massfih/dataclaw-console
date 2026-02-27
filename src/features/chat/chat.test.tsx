@@ -345,4 +345,37 @@ describe('ChatPage', () => {
         }).length,
     ).toBeGreaterThan(0);
   });
+
+  it('attributes tool calls to specialist when specialist chunks are not streamed', async () => {
+    mockChatFetch({
+      chatResponse: createSseResponse([
+        'event: progress\ndata: {"type":"agent_stage","timestamp":1,"agent":"Orchestrator","stage":"started"}\n\n',
+        'event: progress\ndata: {"type":"tool_start","timestamp":2,"agent":"SQLAgent","tool_name":"db_list_tables","specialist_name":"SQLAgent","domain_key":"sql","domain_display_name":"SQL Intelligence"}\n\n',
+        'event: progress\ndata: {"type":"tool_end","timestamp":3,"agent":"SQLAgent","tool_name":"db_list_tables","status":"done","specialist_name":"SQLAgent","domain_key":"sql","domain_display_name":"SQL Intelligence"}\n\n',
+        'event: progress\ndata: {"type":"tool_start","timestamp":4,"agent":"SQLAgent","tool_name":"db_query_table","specialist_name":"SQLAgent","domain_key":"sql","domain_display_name":"SQL Intelligence"}\n\n',
+        'event: progress\ndata: {"type":"tool_end","timestamp":5,"agent":"SQLAgent","tool_name":"db_query_table","status":"done","specialist_name":"SQLAgent","domain_key":"sql","domain_display_name":"SQL Intelligence"}\n\n',
+        'event: progress\ndata: {"type":"agent_stage","timestamp":6,"agent":"Presenter","stage":"started"}\n\n',
+        'data: {"choices":[{"delta":{"content":"Final answer"}}]}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    });
+
+    render(<ChatHarness />);
+    expect(await screen.findByLabelText(/^model$/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: 'show top active vessels' } });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    await screen.findByText('Final answer');
+    expect(screen.getByText(/agent:\s*presenter/i)).toBeInTheDocument();
+    expect(screen.getByText('db_list_tables')).toBeInTheDocument();
+    expect(screen.getByText('db_query_table')).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByText((_, node) => {
+          const text = node?.textContent ?? '';
+          return text.includes('SQLAgent') && text.includes('SQL Intelligence');
+        })
+        .length,
+    ).toBeGreaterThan(0);
+  });
 });
