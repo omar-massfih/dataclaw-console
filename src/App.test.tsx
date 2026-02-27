@@ -22,6 +22,10 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { level: 2, name: /connectors config/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 2, name: /^connectors$/i })).toBeInTheDocument();
+
+    fireEvent.click(within(navigation).getByRole('button', { name: /agents/i }));
+    expect(within(navigation).getByRole('button', { name: /agents/i })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('heading', { level: 2, name: /agents config/i })).toBeInTheDocument();
   });
 
   it('toggles to expanded mode and keeps nav items accessible with tooltips', () => {
@@ -34,11 +38,11 @@ describe('App', () => {
     expect(within(sidebar).getByText(/dataclaw console/i)).toBeInTheDocument();
 
     const connectorsButton = within(sidebar).getByRole('button', { name: /connectors/i });
-    const domainsButton = within(sidebar).getByRole('button', { name: /domains/i });
+    const domainsButton = within(sidebar).getByRole('button', { name: /agents/i });
     const runsButton = within(sidebar).getByRole('button', { name: /runs/i });
 
     expect(connectorsButton).toHaveAttribute('title', 'Connectors - Config drafts');
-    expect(domainsButton).toHaveAttribute('title', 'Domains - Runtime health');
+    expect(domainsButton).toHaveAttribute('title', 'Agents - Config drafts');
     expect(runsButton).toHaveAttribute('title', 'Runs - Coming soon');
     expect(runsButton).toBeDisabled();
   });

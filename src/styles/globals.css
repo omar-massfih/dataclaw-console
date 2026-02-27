@@ -266,8 +266,10 @@ a {
 
 .domains-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-8);
 }
 
 .domains-row {
@@ -281,7 +283,15 @@ a {
   min-width: 0;
 }
 
+.domains-page {
+  min-width: 0;
+}
+
 .connectors-view {
+  min-width: 0;
+}
+
+.domains-view {
   min-width: 0;
 }
 
@@ -290,7 +300,16 @@ a {
   border-bottom: 1px solid var(--color-border);
 }
 
+.domains-view__header {
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .connectors-back-link {
+  white-space: nowrap;
+}
+
+.domains-back-link {
   white-space: nowrap;
 }
 
@@ -298,7 +317,15 @@ a {
   align-items: start;
 }
 
+.domains-toolbar {
+  align-items: start;
+}
+
 .connectors-runtime-summary {
+  border-top: 2px solid color-mix(in oklab, var(--color-primary) 24%, var(--color-surface));
+}
+
+.domains-runtime-summary {
   border-top: 2px solid color-mix(in oklab, var(--color-primary) 24%, var(--color-surface));
 }
 
@@ -328,7 +355,30 @@ a {
   border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-primary));
 }
 
+.domains-list__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-12) var(--space-16);
+  text-align: left;
+  cursor: pointer;
+}
+
+.domains-list__row:hover {
+  border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-primary));
+}
+
 .connectors-list__row--active {
+  border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
+  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
+}
+
+.domains-list__row--active {
   border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
   background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
 }
@@ -338,7 +388,17 @@ a {
   margin-top: var(--space-4);
 }
 
+.domains-list__sub {
+  display: block;
+  margin-top: var(--space-4);
+}
+
 .connectors-list__actions {
+  margin-top: var(--space-8);
+  justify-content: flex-end;
+}
+
+.domains-list__actions {
   margin-top: var(--space-8);
   justify-content: flex-end;
 }
@@ -350,15 +410,43 @@ a {
   background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
 }
 
+.domains-list__actions-confirm {
+  padding: var(--space-8);
+  border: 1px solid color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
+}
+
 .connectors-list__actions-btn {
   min-width: 120px;
+}
+
+.domains-list__actions-btn {
+  min-width: 120px;
+}
+
+.domains-list__row--selected {
+  border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
+  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
 }
 
 .connectors-detail {
   min-width: 0;
 }
 
+.domains-detail {
+  min-width: 0;
+}
+
 .connectors-meta {
+  display: grid;
+  gap: var(--space-8);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-12) 0;
+}
+
+.domains-meta {
   display: grid;
   gap: var(--space-8);
   border-top: 1px solid var(--color-border);
@@ -400,12 +488,34 @@ a {
   padding: var(--space-16);
 }
 
+.domains-empty {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--color-surface) 96%, var(--color-bg));
+  padding: var(--space-16);
+}
+
 .connectors-error {
   border-color: color-mix(in oklab, var(--color-danger) 35%, var(--color-border));
   background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface));
 }
 
+.domains-error {
+  border-color: color-mix(in oklab, var(--color-danger) 35%, var(--color-border));
+  background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface));
+}
+
 .connectors-warning {
+  border-color: color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
+  background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
+}
+
+.connectors-path-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.domains-warning {
   border-color: color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
   background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
 }

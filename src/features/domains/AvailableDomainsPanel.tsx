@@ -10,7 +10,7 @@ export function AvailableDomainsPanel() {
         <Inline justify="between" align="center" wrap gap={12}>
           <Stack gap={4}>
             <Text as="h2" variant="h2" weight="bold" id="available-domains-title">
-              Available Domains
+              Available Agents
             </Text>
             <Text tone="muted">
               Loaded from <code>/api/agent/health</code>.
@@ -22,21 +22,21 @@ export function AvailableDomainsPanel() {
         </Inline>
 
         <Input
-          aria-label="Filter domains"
-          placeholder="Filter domains (e.g. sql)"
+          aria-label="Filter agents"
+          placeholder="Filter agents (e.g. sql)"
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
         />
 
         {isLoading ? (
-          <Text tone="muted">Loading domains...</Text>
+          <Text tone="muted">Loading agents...</Text>
         ) : null}
 
         {!isLoading && error ? (
           <Surface as="div" padding={16} className="domains-alert">
             <Stack gap={12}>
               <Text tone="danger" weight="bold">
-                Failed to load domains
+                Failed to load agents
               </Text>
               <Text tone="muted">{error}</Text>
               <Inline gap={12}>
@@ -49,11 +49,11 @@ export function AvailableDomainsPanel() {
         ) : null}
 
         {!isLoading && !error && visibleDomains.length === 0 ? (
-          <Text tone="muted">No domains available.</Text>
+          <Text tone="muted">No agents available.</Text>
         ) : null}
 
         {!isLoading && !error && visibleDomains.length > 0 ? (
-          <Stack as="ul" gap={8} className="domains-list" aria-label="Available domain list">
+          <Stack as="ul" gap={8} className="domains-list" aria-label="Available agent list">
             {visibleDomains.map((domain) => (
               <li key={domain.key} className="domains-row">
                 <Inline justify="between" align="center" gap={12}>

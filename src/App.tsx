@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 
+import agentAiLogo from './assets/agent-ai.svg';
 import chainLogo from './assets/chain.svg';
 import { AppShell } from './components/layouts';
 import { ConnectorsPage } from './features/connectors';
+import { DomainsPage } from './features/domains';
 
 const SIDEBAR_EXPANDED_STORAGE_KEY = 'app.sidebarExpanded.v1';
 
@@ -10,13 +12,12 @@ interface NavItem {
   id: 'connectors' | 'domains' | 'runs';
   label: string;
   meta: string;
-  active?: boolean;
   disabled?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { id: 'connectors', label: 'Connectors', meta: 'Config drafts', active: true },
-  { id: 'domains', label: 'Domains', meta: 'Runtime health' },
+  { id: 'connectors', label: 'Connectors', meta: 'Config drafts' },
+  { id: 'domains', label: 'Agents', meta: 'Config drafts' },
   { id: 'runs', label: 'Runs', meta: 'Coming soon', disabled: true },
 ];
 
@@ -25,12 +26,7 @@ function ConnectorsIcon() {
 }
 
 function DomainsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M4 12h16M12 4a14 14 0 0 1 0 16M12 4a14 14 0 0 0 0 16" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
+  return <img src={agentAiLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
 }
 
 function RunsIcon() {
@@ -81,6 +77,7 @@ function getInitialSidebarExpanded() {
 
 export default function App() {
   const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(getInitialSidebarExpanded);
+  const [activePage, setActivePage] = useState<'connectors' | 'domains'>('connectors');
 
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_EXPANDED_STORAGE_KEY, String(sidebarExpanded));
@@ -118,11 +115,19 @@ export default function App() {
                 <button
                   type="button"
                   className="app-nav__link"
-                  aria-current={item.active ? 'page' : undefined}
+                  aria-current={activePage === item.id ? 'page' : undefined}
                   data-disabled={item.disabled ? 'true' : undefined}
                   disabled={item.disabled}
                   aria-label={item.label}
                   title={title}
+                  onClick={() => {
+                    if (item.disabled) return;
+                    if (item.id === 'domains') {
+                      setActivePage('domains');
+                      return;
+                    }
+                    setActivePage('connectors');
+                  }}
                 >
                   <span className="app-nav__icon">{getIcon(item.id)}</span>
                   <span className="app-nav__content">
@@ -154,7 +159,7 @@ export default function App() {
   return (
     <main className="app-shell">
       <AppShell sidebar={sidebar} className={appShellClassName}>
-        <ConnectorsPage />
+        {activePage === 'domains' ? <DomainsPage /> : <ConnectorsPage />}
       </AppShell>
     </main>
   );

@@ -13,14 +13,14 @@ describe('AvailableDomainsPanel', () => {
 
     render(<AvailableDomainsPanel />);
 
-    const list = await screen.findByRole('list', { name: /available domain list/i });
+    const list = await screen.findByRole('list', { name: /available agent list/i });
     const items = Array.from(list.querySelectorAll('li'));
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent(/geo/i);
     expect(items[1]).toHaveTextContent(/kafka_ops/i);
     expect(items[2]).toHaveTextContent(/sql/i);
 
-    fireEvent.change(screen.getByLabelText(/filter domains/i), { target: { value: 'sq' } });
+    fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'sq' } });
 
     expect(screen.getAllByText(/^sql$/i)).toHaveLength(2);
     expect(screen.queryByText(/^geo$/i)).not.toBeInTheDocument();
