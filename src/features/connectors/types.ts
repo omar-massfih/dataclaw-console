@@ -90,21 +90,21 @@ export interface DeleteConnectorResponse {
   error?: MutationInlineError;
 }
 
-export interface UploadedSslCafilePayload {
-  path: string;
-  size_bytes: number;
-  sha256: string;
-}
-
 export interface UploadConnectorSslCafileResponse {
   uploaded: true;
   connector: ConnectorDraft;
-  file: UploadedSslCafilePayload;
+  file: {
+    path: string;
+    size_bytes: number;
+    sha256: string;
+  };
   reload: ReloadPayload;
   runtime: RuntimePayload;
   import_state: ImportStatePayload;
   error?: MutationInlineError;
 }
+
+export type UploadedSslCafilePayload = UploadConnectorSslCafileResponse['file'];
 
 export interface ApiErrorEnvelope {
   error: {
