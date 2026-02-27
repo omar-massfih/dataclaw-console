@@ -117,7 +117,7 @@ export default function App() {
       <nav aria-label="Primary navigation" className="app-sidebar__nav">
         <ul className="app-nav">
           {navItems.map((item) => {
-            const title = `${item.label} - ${item.meta}`;
+            const title = sidebarExpanded ? `${item.label} - ${item.meta}` : item.label;
 
             return (
               <li key={item.id} className="app-nav__item">
