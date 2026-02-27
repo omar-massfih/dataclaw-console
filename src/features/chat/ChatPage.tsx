@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button, Inline, Stack, Surface, Text } from '../../components/primitives';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import type { ChatSessionState } from './useChatSession';
 
 interface ChatPageProps {
@@ -80,7 +81,11 @@ export function ChatPage({ session }: ChatPageProps) {
                   <Text as="h3" variant="small" weight="bold">
                     {message.role === 'user' ? 'You' : 'Assistant'}
                   </Text>
-                  <Text className="chat-message__content">{message.content || ''}</Text>
+                  {message.role === 'assistant' ? (
+                    <MarkdownRenderer content={message.content || ''} className="chat-message__content chat-message__content--markdown" />
+                  ) : (
+                    <Text className="chat-message__content">{message.content || ''}</Text>
+                  )}
                   {showStreamingIndicator || showProgress ? (
                     <Stack gap={8} className="chat-progress">
                       {showStreamingIndicator ? (

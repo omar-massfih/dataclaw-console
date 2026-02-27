@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatPage } from './ChatPage';
@@ -206,6 +206,40 @@ describe('ChatPage', () => {
     await waitFor(() => {
       expect(screen.queryByLabelText(/generating response/i)).not.toBeInTheDocument();
     });
+  });
+
+  it('renders markdown for assistant messages only', async () => {
+    mockChatFetch({
+      chatResponse: createSseResponse([
+        'data: {"choices":[{"delta":{"content":"# Overview\\n\\n- item one\\n\\n[OpenAI](https://openai.com)\\n\\n```ts\\nconst total = 2;\\n```\\n\\n| Name | Value |\\n| --- | --- |\\n| A | 1 |"}}]}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    });
+
+    render(<ChatHarness />);
+    expect(await screen.findByLabelText(/^model$/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: '# user heading' } });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    expect(await screen.findByText('# user heading')).toBeInTheDocument();
+
+    const assistantHeading = await screen.findByRole('heading', { level: 1, name: 'Overview' });
+    const assistantMessage = assistantHeading.closest('.chat-message');
+    expect(assistantMessage).not.toBeNull();
+    if (!(assistantMessage instanceof HTMLElement)) {
+      throw new Error('assistant message not found');
+    }
+
+    expect(within(assistantMessage).getByText('item one')).toBeInTheDocument();
+    expect(within(assistantMessage).getByText('const total = 2;')).toBeInTheDocument();
+    expect(within(assistantMessage).getByText('Name')).toBeInTheDocument();
+    expect(within(assistantMessage).getByText('Value')).toBeInTheDocument();
+
+    const link = within(assistantMessage).getByRole('link', { name: 'OpenAI' });
+    expect(link).toHaveAttribute('href', 'https://openai.com');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer noopener');
   });
 
   it('allows collapsing and expanding progress details', async () => {
