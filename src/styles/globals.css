@@ -1533,9 +1533,6 @@ a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  border: 1px solid;
-  border-radius: var(--radius-md);
-  padding: var(--space-8) var(--space-12);
   font-size: var(--font-size-small);
   line-height: var(--line-height-small);
   font-weight: 600;
@@ -1551,38 +1548,26 @@ a {
 
 .status-success {
   color: var(--color-success);
-  background: color-mix(in oklab, var(--color-success) 14%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-success) 32%, var(--color-surface));
 }
 
 .status-warning {
   color: var(--color-warning);
-  background: color-mix(in oklab, var(--color-warning) 14%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-warning) 32%, var(--color-surface));
 }
 
 .status-muted {
   color: var(--color-muted);
-  background: color-mix(in oklab, var(--color-border) 20%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-border) 80%, var(--color-surface));
 }
 
 .status-danger {
   color: var(--color-danger);
-  background: color-mix(in oklab, var(--color-danger) 14%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-danger) 32%, var(--color-surface));
 }
 
 .status-primary {
   color: var(--color-primary);
-  background: color-mix(in oklab, var(--color-primary) 12%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-primary) 28%, var(--color-surface));
 }
 
 .status-info {
   color: var(--color-primary);
-  background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface));
-  border-color: color-mix(in oklab, var(--color-primary) 26%, var(--color-surface));
 }
 
 .contract-grid {
