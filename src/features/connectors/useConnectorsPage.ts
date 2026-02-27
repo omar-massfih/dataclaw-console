@@ -29,6 +29,11 @@ import type {
   ValidateConnectorsResponse,
 } from './types';
 
+const CONNECTORS_VIEW_MODE_STORAGE_KEY = 'connectors.viewMode.v1';
+
+type ConnectorsViewMode = 'list' | 'detail';
+type SaveStatus = 'idle' | 'saving' | 'saved';
+
 function sortConnectors(connectors: ConnectorDraft[]): ConnectorDraft[] {
   return connectors.slice().sort((a, b) => a.id.localeCompare(b.id, undefined, { sensitivity: 'base' }));
 }
@@ -67,6 +72,7 @@ export function useConnectorsPage() {
   const [formFieldError, setFormFieldError] = useState<ConnectorFormFieldError | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -75,6 +81,12 @@ export function useConnectorsPage() {
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimePayload | null>(null);
   const [importState, setImportState] = useState<ImportStatePayload | null>(null);
   const [reloadWarning, setReloadWarning] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ConnectorsViewMode>(() => {
+    if (typeof window === 'undefined') return 'list';
+    const stored = window.localStorage.getItem(CONNECTORS_VIEW_MODE_STORAGE_KEY);
+    return stored === 'detail' ? 'detail' : 'list';
+  });
 
   const selectedConnector = useMemo(
     () => connectors.find((connector) => connector.id === selectedConnectorId) ?? null,
@@ -126,26 +138,63 @@ export function useConnectorsPage() {
     void reloadList();
   }, [reloadList]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(CONNECTORS_VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'detail' && mode === 'view' && !selectedConnector) {
+      setViewMode('list');
+    }
+  }, [mode, selectedConnector, viewMode]);
+
+  const openListView = useCallback(() => {
+    setViewMode('list');
+    setPendingDeleteId(null);
+    setSaveStatus('idle');
+  }, []);
+
+  const openDetailView = useCallback(
+    (connectorId?: string) => {
+      if (connectorId) {
+        setSelectedConnectorId(connectorId);
+      }
+      setViewMode('detail');
+      setPendingDeleteId(null);
+    },
+    [],
+  );
+
   const beginCreate = useCallback(() => {
     setMode('create');
+    setViewMode('detail');
+    setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
     setFormDraft(createDefaultConnectorFormDraft());
+    setPendingDeleteId(null);
   }, []);
 
   const beginEdit = useCallback(() => {
     if (!selectedConnector) return;
     setMode('edit');
+    setViewMode('detail');
+    setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
     setFormDraft(connectorToFormDraft(selectedConnector));
+    setPendingDeleteId(null);
   }, [selectedConnector]);
 
   const cancelForm = useCallback(() => {
     setMode('view');
+    setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
     setFormDraft(selectedConnector ? connectorToFormDraft(selectedConnector) : createDefaultConnectorFormDraft());
+    setPendingDeleteId(null);
+    setViewMode('list');
   }, [selectedConnector]);
 
   const selectConnector = useCallback(
@@ -154,11 +203,52 @@ export function useConnectorsPage() {
       setMode('view');
       setFormError(null);
       setFormFieldError(null);
+      setPendingDeleteId(null);
+      setSaveStatus('idle');
       const next = connectors.find((item) => item.id === id) ?? null;
       setFormDraft(next ? connectorToFormDraft(next) : createDefaultConnectorFormDraft());
     },
     [connectors],
   );
+
+  const selectConnectorInList = useCallback(
+    (id: string) => {
+      selectConnector(id);
+      setViewMode('list');
+      setPendingDeleteId(null);
+    },
+    [selectConnector],
+  );
+
+  const onConnectorSelectForDetail = useCallback(
+    (id: string) => {
+      selectConnector(id);
+      setViewMode('detail');
+      setPendingDeleteId(null);
+    },
+    [selectConnector],
+  );
+
+  const openEditFromList = useCallback(() => {
+    if (!selectedConnector) return;
+    setViewMode('detail');
+    setPendingDeleteId(null);
+    setMode('edit');
+    setSaveStatus('idle');
+    setFormError(null);
+    setFormFieldError(null);
+    setFormDraft(connectorToFormDraft(selectedConnector));
+  }, [selectedConnector]);
+
+  const startDeleteFromList = useCallback((id: string) => {
+    setSelectedConnectorId(id);
+    setPendingDeleteId(id);
+    setViewMode('list');
+  }, []);
+
+  const cancelDeleteFromList = useCallback(() => {
+    setPendingDeleteId(null);
+  }, []);
 
   useEffect(() => {
     if (mode === 'view') {
@@ -170,6 +260,7 @@ export function useConnectorsPage() {
     setFormDraft((prev) => ({ ...prev, [field]: value }));
     setFormFieldError(null);
     setFormError(null);
+    setSaveStatus('idle');
   }, []);
 
   const updateSettingsField = useCallback((field: string, value: string | boolean) => {
@@ -185,17 +276,20 @@ export function useConnectorsPage() {
     }));
     setFormFieldError(null);
     setFormError(null);
+    setSaveStatus('idle');
   }, []);
 
   const setFormKind = useCallback((nextKind: ConnectorFormDraft['kind']) => {
     setFormDraft((prev) => switchSettingsDraftKind(prev, nextKind));
     setFormFieldError(null);
     setFormError(null);
+    setSaveStatus('idle');
   }, []);
 
   const saveForm = useCallback(async () => {
     setFormError(null);
     setFormFieldError(null);
+    setSaveStatus('idle');
 
     const parsed = serializeSettingsDraft(formDraft.settings);
     if (!parsed.ok) {
@@ -216,6 +310,7 @@ export function useConnectorsPage() {
     }
 
     setIsSaving(true);
+    setSaveStatus('saving');
 
     const result =
       mode === 'create'
@@ -231,16 +326,25 @@ export function useConnectorsPage() {
         hasReloadFailureAfterWriteCode(result.error, response.error?.code)
       ) {
         setReloadWarning(response.error?.message ?? 'Connector saved, but runtime reload failed. SQLite state was kept.');
-        setMode('view');
+        setSaveStatus('saved');
+        if (mode === 'create') {
+          setSelectedConnectorId(response.connector.id);
+          setMode('edit');
+        }
         await reloadList(response.connector.id);
         return { ok: true as const };
       }
+      setSaveStatus('idle');
       setFormError(normalizeError(result.error));
       return { ok: false as const };
     }
 
     setReloadWarning(null);
-    setMode('view');
+    setSaveStatus('saved');
+    if (mode === 'create') {
+      setSelectedConnectorId(result.data.connector.id);
+      setMode('edit');
+    }
     await reloadList(result.data.connector.id);
     return { ok: true as const };
   }, [formDraft, mode, reloadList, selectedConnectorId]);
@@ -256,6 +360,8 @@ export function useConnectorsPage() {
       if (isCommittedDelete(response) && hasReloadFailureAfterWriteCode(result.error, response.error?.code)) {
         setReloadWarning(response.error?.message ?? 'Connector deleted, but runtime reload failed. SQLite state was kept.');
         setMode('view');
+        setViewMode('list');
+        setPendingDeleteId(null);
         await reloadList(response.id);
         return;
       }
@@ -264,8 +370,17 @@ export function useConnectorsPage() {
     }
     setReloadWarning(null);
     setMode('view');
+    setViewMode('list');
+    setPendingDeleteId(null);
     await reloadList(result.data.id);
   }, [reloadList, selectedConnectorId]);
+
+  const confirmDeleteFromList = useCallback(async () => {
+    if (!selectedConnectorId) return;
+    await removeSelected();
+    setViewMode('list');
+    setPendingDeleteId(null);
+  }, [removeSelected, selectedConnectorId]);
 
   const runValidate = useCallback(async () => {
     setIsValidating(true);
@@ -304,6 +419,7 @@ export function useConnectorsPage() {
     formFieldError,
     isLoadingList,
     isSaving,
+    saveStatus,
     isDeleting,
     isValidating,
     isExporting,
@@ -312,8 +428,18 @@ export function useConnectorsPage() {
     runtimeInfo,
     importState,
     reloadWarning,
+    pendingDeleteId,
+    viewMode,
     setFilter,
     selectConnector,
+    selectConnectorInList,
+    onConnectorSelectForDetail,
+    openListView,
+    openDetailView,
+    openEditFromList,
+    startDeleteFromList,
+    cancelDeleteFromList,
+    confirmDeleteFromList,
     beginCreate,
     beginEdit,
     cancelForm,

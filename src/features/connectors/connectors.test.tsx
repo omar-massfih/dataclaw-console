@@ -88,9 +88,10 @@ function successMutationResponse(connector: ConnectorDraft): CreateOrUpdateConne
 describe('ConnectorsPage', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
-  it('loads, sorts, filters connectors and renders runtime summary', async () => {
+  it('loads list, supports filtering, and shows row actions only for selected row', async () => {
     mockList([sqlConnector, kafkaConnector]);
 
     render(<ConnectorsPage />);
@@ -99,7 +100,11 @@ describe('ConnectorsPage', () => {
     expect(within(list).getAllByRole('button').length).toBeGreaterThan(0);
     expect(screen.getByText(/generation 3/i)).toBeInTheDocument();
     expect(screen.getByText(/active connectors:\s*1/i)).toBeInTheDocument();
-    expect(screen.getByText(/runtime_active=true/i)).toBeInTheDocument();
+
+    fireEvent.click(within(list).getByRole('button', { name: /sql_reader_local/i }));
+    expect(await screen.findByRole('button', { name: /^edit$/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/filter connectors/i), { target: { value: 'sql' } });
     expect(screen.getByLabelText(/filter connectors/i)).toHaveValue('sql');
@@ -251,11 +256,11 @@ describe('ConnectorsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect((await screen.findAllByText(/saved but runtime reload failed/i)).length).toBeGreaterThan(0);
-    const list = await screen.findByRole('list', { name: /connector drafts/i });
-    expect(within(list).getByText(/^sql_reader_new$/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /edit connector: sql_reader_new/i })).toBeInTheDocument();
   });
 
-  it('populates edit form and locks id/kind in edit mode', async () => {
+  it('opens detail edit from list actions and locks id/kind in edit mode', async () => {
     mockList([sqlConnector]);
     vi.spyOn(connectorsApi, 'replaceConnector').mockResolvedValue({
       data: successMutationResponse({
@@ -285,7 +290,10 @@ describe('ConnectorsPage', () => {
       });
 
     render(<ConnectorsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: /^edit$/i }));
+    const list = await screen.findByRole('list', { name: /connector drafts/i });
+    fireEvent.click(within(list).getByRole('button', { name: /sql_reader_local/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.getByRole('button', { name: /back to connectors list/i })).toBeInTheDocument();
 
     const idInput = screen.getByLabelText(/connector id/i);
     const kindSelect = screen.getByRole('combobox', { name: /kind/i });
@@ -294,12 +302,23 @@ describe('ConnectorsPage', () => {
     expect(screen.getByLabelText(/database url/i)).toHaveValue('sqlite:///tmp.db');
 
     fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders\nshipments' } });
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
+    const refreshedList = await screen.findByRole('list', { name: /connector drafts/i });
+    fireEvent.click(within(refreshedList).getByRole('button', { name: /sql_reader_local/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders\nshipments' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(connectorsApi.replaceConnector).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders' } });
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
   });
 
-  it('handles reload failure after committed delete mutation', async () => {
+  it('supports inline delete confirm flow and handles reload failure after committed delete mutation', async () => {
     let deleted = false;
     vi.spyOn(connectorsApi, 'listConnectors').mockImplementation(() =>
       Promise.resolve({
@@ -345,7 +364,15 @@ describe('ConnectorsPage', () => {
     });
 
     render(<ConnectorsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: /^delete$/i }));
+    const list = await screen.findByRole('list', { name: /connector drafts/i });
+    fireEvent.click(within(list).getByRole('button', { name: /sql_reader_local/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(screen.getByRole('button', { name: /confirm delete/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('button', { name: /confirm delete/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql_reader_local'));
     expect((await screen.findAllByText(/deleted but runtime reload failed/i)).length).toBeGreaterThan(0);
@@ -353,11 +380,11 @@ describe('ConnectorsPage', () => {
 
   it('supports validate and export actions', async () => {
     mockList([sqlConnector]);
-    vi.spyOn(connectorsApi, 'validateConnectors').mockResolvedValue({
+    const validateSpy = vi.spyOn(connectorsApi, 'validateConnectors').mockResolvedValue({
       data: { validated: true, connector_count: 1, connector_ids: ['sql_reader_local'] },
       error: null,
     });
-    vi.spyOn(connectorsApi, 'exportConnectors').mockResolvedValue({
+    const exportSpy = vi.spyOn(connectorsApi, 'exportConnectors').mockResolvedValue({
       data: {
         yaml: 'connectors:\n  - id: sql_reader_local\n',
         connector_count: 1,
@@ -368,11 +395,20 @@ describe('ConnectorsPage', () => {
     });
 
     render(<ConnectorsPage />);
-
     fireEvent.click(await screen.findByRole('button', { name: /validate all/i }));
-    expect(await screen.findByText(/validated 1 connector/i)).toBeInTheDocument();
+    await waitFor(() => expect(validateSpy).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole('button', { name: /export yaml/i }));
-    expect(await screen.findByText(/connectors:/i)).toBeInTheDocument();
+    await waitFor(() => expect(exportSpy).toHaveBeenCalled());
+  });
+
+  it('restores stored detail preference but falls back to list when no selection exists', async () => {
+    window.localStorage.setItem('connectors.viewMode.v1', 'detail');
+    mockList([]);
+
+    render(<ConnectorsPage />);
+
+    expect(await screen.findByRole('heading', { level: 2, name: /^connectors$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@ interface ConnectorFormProps {
   mode: Extract<EditorMode, 'create' | 'edit'>;
   draft: ConnectorFormDraft;
   isSaving: boolean;
+  saveStatus: 'idle' | 'saving' | 'saved';
   formError: string | null;
   formFieldError: ConnectorFormFieldError | null;
   onChange: <K extends keyof ConnectorFormDraft>(field: K, value: ConnectorFormDraft[K]) => void;
@@ -20,6 +21,7 @@ export function ConnectorForm({
   mode,
   draft,
   isSaving,
+  saveStatus,
   formError,
   formFieldError,
   onChange,
@@ -110,8 +112,13 @@ export function ConnectorForm({
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="button" variant="primary" onClick={onSave} isLoading={isSaving}>
-          Save
+        <Button
+          type="button"
+          variant={saveStatus === 'saved' ? 'success' : 'primary'}
+          onClick={onSave}
+          isLoading={isSaving}
+        >
+          {saveStatus === 'saved' ? 'Saved' : 'Save'}
         </Button>
       </Inline>
     </Inline>

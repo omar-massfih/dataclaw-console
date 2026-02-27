@@ -272,6 +272,19 @@ a {
   min-width: 0;
 }
 
+.connectors-view {
+  min-width: 0;
+}
+
+.connectors-view__header {
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.connectors-back-link {
+  white-space: nowrap;
+}
+
 .connectors-toolbar {
   align-items: start;
 }
@@ -314,6 +327,22 @@ a {
 .connectors-list__sub {
   display: block;
   margin-top: var(--space-4);
+}
+
+.connectors-list__actions {
+  margin-top: var(--space-8);
+  justify-content: flex-end;
+}
+
+.connectors-list__actions-confirm {
+  padding: var(--space-8);
+  border: 1px solid color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
+}
+
+.connectors-list__actions-btn {
+  min-width: 120px;
 }
 
 .connectors-detail {
@@ -384,19 +413,124 @@ a {
   margin: 0;
 }
 
-.sidebar-nav {
+.app-nav {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-4);
 }
 
-.sidebar-nav__item {
-  border: 1px solid var(--color-border);
+.app-nav__item {
+  min-width: 0;
+}
+
+.app-nav__link {
+  width: 100%;
+  appearance: none;
   background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--space-12);
+  color: var(--color-text);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-12);
+  text-align: left;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-nav__link .app-nav__meta {
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+  font-weight: 400;
+}
+
+.app-nav__link[aria-current='page'] {
+  border-color: color-mix(in oklab, var(--color-primary) 52%, var(--color-border));
+  background: color-mix(in oklab, var(--color-primary) 7%, var(--color-surface));
+}
+
+.app-nav__link:hover:not([aria-current='page']):not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-primary) 20%, var(--color-border));
+  background: color-mix(in oklab, var(--color-surface) 88%, var(--color-bg));
+}
+
+.app-nav__link[data-disabled='true'],
+.app-nav__link:disabled {
+  color: var(--color-muted);
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.app-nav__link[data-disabled='true'] .app-nav__meta,
+.app-nav__link:disabled .app-nav__meta {
+  color: var(--color-muted);
+}
+
+.app-header {
+  border-top: 2px solid color-mix(in oklab, var(--color-primary) 32%, var(--color-surface));
+}
+
+.app-header__main {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.app-header__title {
+  margin: 0;
+}
+
+.app-header__subtitle {
+  margin-top: var(--space-8);
+}
+
+.app-header__meta {
+  align-items: center;
+}
+
+.app-header__chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+  font-weight: 600;
+  padding: var(--space-4) var(--space-8);
+}
+
+@media (max-width: 959px) {
+  .layout-app-shell__sidebar {
+    position: static;
+  }
+
+  .app-sidebar > .surface {
+    padding: var(--space-12) !important;
+  }
+
+  .app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+  }
+
+  .app-nav__item {
+    flex: 1 1 180px;
+  }
+}
+
+@media (min-width: 960px) {
+  .app-header__main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-16);
+  }
 }
 
 .panel-title {
@@ -469,6 +603,19 @@ a {
 
 .btn-primary:active:not(:disabled) {
   background: color-mix(in oklab, var(--color-primary) 76%, var(--gray-900));
+}
+
+.btn-success {
+  background: var(--color-success);
+  color: var(--white);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--color-success) 88%, var(--gray-900));
+}
+
+.btn-success:active:not(:disabled) {
+  background: color-mix(in oklab, var(--color-success) 76%, var(--gray-900));
 }
 
 .btn-secondary {

@@ -4,20 +4,32 @@ import type { ConnectorDraft } from './types';
 interface ConnectorListProps {
   connectors: ConnectorDraft[];
   selectedConnectorId: string | null;
+  pendingDeleteId: string | null;
   filter: string;
   isLoading: boolean;
+  isDeleting: boolean;
   onFilterChange: (value: string) => void;
-  onSelect: (id: string) => void;
+  onSelectInList: (id: string) => void;
+  onEditSelected: () => void;
+  onStartDelete: (id: string) => void;
+  onCancelDelete: () => void;
+  onConfirmDelete: () => void;
   onCreate: () => void;
 }
 
 export function ConnectorList({
   connectors,
   selectedConnectorId,
+  pendingDeleteId,
   filter,
   isLoading,
+  isDeleting,
   onFilterChange,
-  onSelect,
+  onSelectInList,
+  onEditSelected,
+  onStartDelete,
+  onCancelDelete,
+  onConfirmDelete,
   onCreate,
 }: ConnectorListProps) {
   return (
@@ -48,12 +60,13 @@ export function ConnectorList({
         <ul className="connectors-list" aria-label="Connector drafts">
           {connectors.map((connector) => {
             const active = connector.id === selectedConnectorId;
+            const confirmingDelete = pendingDeleteId === connector.id;
             return (
               <li key={connector.id}>
                 <button
                   type="button"
-                  className={`connectors-list__row${active ? ' connectors-list__row--active' : ''}`}
-                  onClick={() => onSelect(connector.id)}
+                  className={`connectors-list__row${active ? ' connectors-list__row--active connectors-list__row--selected' : ''}`}
+                  onClick={() => onSelectInList(connector.id)}
                 >
                   <span>
                     <Text as="span" weight="bold">
@@ -72,6 +85,63 @@ export function ConnectorList({
                     ) : null}
                   </Inline>
                 </button>
+
+                {active ? (
+                  <Inline gap={8} align="center" className={`connectors-list__actions${confirmingDelete ? ' connectors-list__actions-confirm' : ''}`}>
+                    {confirmingDelete ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="connectors-list__actions-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void onConfirmDelete();
+                          }}
+                          isLoading={isDeleting}
+                        >
+                          Confirm delete
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="connectors-list__actions-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onCancelDelete();
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="connectors-list__actions-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onEditSelected();
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="connectors-list__actions-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onStartDelete(connector.id);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </Inline>
+                ) : null}
               </li>
             );
           })}

@@ -20,6 +20,7 @@ interface ConnectorDetailPanelProps {
   exportResult: ExportConnectorsResponse | null;
   reloadWarning: string | null;
   isSaving: boolean;
+  saveStatus: 'idle' | 'saving' | 'saved';
   isDeleting: boolean;
   onBeginEdit: () => void;
   onDelete: () => void;
@@ -42,6 +43,7 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
     exportResult,
     reloadWarning,
     isSaving,
+    saveStatus,
     isDeleting,
     onBeginEdit,
     onDelete,
@@ -58,6 +60,7 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
         mode={mode}
         draft={draft}
         isSaving={isSaving}
+        saveStatus={saveStatus}
         formError={formError}
         formFieldError={formFieldError}
         onChange={onChangeDraft}
@@ -109,15 +112,6 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
                 Updated: {selectedConnector.updated_at}
               </Text>
             </div>
-
-            <Stack gap={8}>
-              <Text as="h3" variant="h3" weight="bold">
-                Settings (read-only)
-              </Text>
-              <pre className="connectors-export">
-                <code>{JSON.stringify(selectedConnector.settings, null, 2)}</code>
-              </pre>
-            </Stack>
           </Stack>
         </Surface>
       )}

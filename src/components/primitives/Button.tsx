@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'success';
   isLoading?: boolean;
 };
 
@@ -14,9 +14,8 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const isDisabled = isLoading || disabled === true;
-  const classes = ['btn', variant === 'primary' ? 'btn-primary' : 'btn-secondary', className ?? '']
-    .filter(Boolean)
-    .join(' ');
+  const variantClass = variant === 'primary' ? 'btn-primary' : variant === 'success' ? 'btn-success' : 'btn-secondary';
+  const classes = ['btn', variantClass, className ?? ''].filter(Boolean).join(' ');
 
   return (
     <button className={classes} disabled={isDisabled} {...rest}>

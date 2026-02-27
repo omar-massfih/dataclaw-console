@@ -1,4 +1,3 @@
-import { ListDetailLayout } from '../../components/layouts';
 import { Button, Inline, Stack, Surface, Text } from '../../components/primitives';
 import { ConnectorDetailPanel } from './ConnectorDetailPanel';
 import { ConnectorList } from './ConnectorList';
@@ -6,15 +5,22 @@ import { useConnectorsPage } from './useConnectorsPage';
 
 export function ConnectorsPage() {
   const state = useConnectorsPage();
+  const isFormView = state.mode === 'create' || state.mode === 'edit';
 
   const list = (
     <ConnectorList
       connectors={state.visibleConnectors}
       selectedConnectorId={state.selectedConnectorId}
+      pendingDeleteId={state.pendingDeleteId}
       filter={state.filter}
       isLoading={state.isLoadingList}
+      isDeleting={state.isDeleting}
       onFilterChange={state.setFilter}
-      onSelect={state.selectConnector}
+      onSelectInList={state.selectConnectorInList}
+      onEditSelected={state.openEditFromList}
+      onStartDelete={state.startDeleteFromList}
+      onCancelDelete={state.cancelDeleteFromList}
+      onConfirmDelete={() => void state.confirmDeleteFromList()}
       onCreate={state.beginCreate}
     />
   );
@@ -31,6 +37,7 @@ export function ConnectorsPage() {
       exportResult={state.exportResult}
       reloadWarning={state.reloadWarning}
       isSaving={state.isSaving}
+      saveStatus={state.saveStatus}
       isDeleting={state.isDeleting}
       onBeginEdit={state.beginEdit}
       onDelete={() => void state.removeSelected()}
@@ -93,7 +100,35 @@ export function ConnectorsPage() {
         </Surface>
       ) : null}
 
-      <ListDetailLayout listTitle="Connectors" detailTitle="Details" list={list} detail={detail} />
+      {!isFormView ? (
+        <Surface as="section" className="connectors-view" padding={24}>
+          <Stack gap={12}>
+            <Text as="h2" variant="h2" weight="bold">
+              Connectors
+            </Text>
+            {list}
+          </Stack>
+        </Surface>
+      ) : (
+        <Surface as="section" className="connectors-view" padding={24}>
+          <Stack gap={12}>
+            <Inline className="connectors-view__header" justify="between" align="center" wrap gap={12}>
+              <Stack gap={4}>
+                <Text as="h2" variant="h2" weight="bold">
+                  Connector form
+                </Text>
+                <Text tone="muted" variant="small">
+                  {state.mode === 'create' ? 'New connector draft' : `Edit connector: ${state.selectedConnector?.id ?? ''}`}
+                </Text>
+              </Stack>
+              <Button type="button" variant="secondary" className="connectors-back-link" onClick={state.openListView}>
+                Back to connectors list
+              </Button>
+            </Inline>
+            {detail}
+          </Stack>
+        </Surface>
+      )}
     </Stack>
   );
 }
