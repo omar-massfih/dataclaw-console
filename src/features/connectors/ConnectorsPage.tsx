@@ -36,11 +36,16 @@ export function ConnectorsPage() {
       isSaving={state.isSaving}
       saveStatus={state.saveStatus}
       isDeleting={state.isDeleting}
+      selectedConnectorId={state.selectedConnectorId}
+      isUploadingSslCafile={state.isUploadingSslCafile}
+      sslUploadError={state.sslUploadError}
+      sslUploadInfo={state.sslUploadInfo}
       onBeginEdit={state.beginEdit}
       onDelete={() => void state.removeSelected()}
       onChangeDraft={state.updateFormField}
       onUpdateSettingsField={state.updateSettingsField}
       onKindChange={state.setFormKind}
+      onUploadSslCafile={state.uploadSelectedConnectorSslCafile}
       onSave={() => void state.saveForm()}
       onCancel={state.cancelForm}
     />

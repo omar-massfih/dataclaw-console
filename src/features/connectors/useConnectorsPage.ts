@@ -5,6 +5,7 @@ import {
   deleteConnector,
   listConnectors,
   replaceConnector,
+  uploadConnectorSslCafile,
 } from './api';
 import {
   connectorToFormDraft,
@@ -23,6 +24,8 @@ import type {
   EditorMode,
   ImportStatePayload,
   RuntimePayload,
+  UploadConnectorSslCafileResponse,
+  UploadedSslCafilePayload,
 } from './types';
 
 const CONNECTORS_VIEW_MODE_STORAGE_KEY = 'connectors.viewMode.v1';
@@ -53,6 +56,12 @@ function isCommittedDelete(response: DeleteConnectorResponse | null): response i
   return Boolean(response && response.deleted && response.id);
 }
 
+function isCommittedSslUpload(
+  response: UploadConnectorSslCafileResponse | null,
+): response is UploadConnectorSslCafileResponse {
+  return Boolean(response?.uploaded && response.connector?.id && response.file?.path);
+}
+
 function hasReloadFailureAfterWriteCode(error: ConnectorApiError | null, responseErrorCode?: string): boolean {
   return Boolean(error?.code === 'reload_failed_after_write' || responseErrorCode === 'reload_failed_after_write');
 }
@@ -73,6 +82,9 @@ export function useConnectorsPage() {
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimePayload | null>(null);
   const [importState, setImportState] = useState<ImportStatePayload | null>(null);
   const [reloadWarning, setReloadWarning] = useState<string | null>(null);
+  const [isUploadingSslCafile, setIsUploadingSslCafile] = useState(false);
+  const [sslUploadError, setSslUploadError] = useState<string | null>(null);
+  const [sslUploadInfo, setSslUploadInfo] = useState<UploadedSslCafilePayload | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ConnectorsViewMode>(() => {
     if (typeof window === 'undefined') return 'list';
@@ -140,6 +152,8 @@ export function useConnectorsPage() {
   const openListView = useCallback(() => {
     setViewMode('list');
     setPendingDeleteId(null);
+    setSslUploadError(null);
+    setSslUploadInfo(null);
     setSaveStatus('idle');
   }, []);
 
@@ -160,6 +174,8 @@ export function useConnectorsPage() {
     setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
+    setSslUploadError(null);
+    setSslUploadInfo(null);
     setFormDraft(createDefaultConnectorFormDraft());
     setPendingDeleteId(null);
   }, []);
@@ -171,6 +187,8 @@ export function useConnectorsPage() {
     setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
+    setSslUploadError(null);
+    setSslUploadInfo(null);
     setFormDraft(connectorToFormDraft(selectedConnector));
     setPendingDeleteId(null);
   }, [selectedConnector]);
@@ -180,6 +198,8 @@ export function useConnectorsPage() {
     setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
+    setSslUploadError(null);
+    setSslUploadInfo(null);
     setFormDraft(selectedConnector ? connectorToFormDraft(selectedConnector) : createDefaultConnectorFormDraft());
     setPendingDeleteId(null);
     setViewMode('list');
@@ -191,6 +211,8 @@ export function useConnectorsPage() {
       setMode('view');
       setFormError(null);
       setFormFieldError(null);
+      setSslUploadError(null);
+      setSslUploadInfo(null);
       setPendingDeleteId(null);
       setSaveStatus('idle');
       const next = connectors.find((item) => item.id === id) ?? null;
@@ -225,6 +247,8 @@ export function useConnectorsPage() {
     setSaveStatus('idle');
     setFormError(null);
     setFormFieldError(null);
+    setSslUploadError(null);
+    setSslUploadInfo(null);
     setFormDraft(connectorToFormDraft(selectedConnector));
   }, [selectedConnector]);
 
@@ -248,6 +272,7 @@ export function useConnectorsPage() {
     setFormDraft((prev) => ({ ...prev, [field]: value }));
     setFormFieldError(null);
     setFormError(null);
+    setSslUploadError(null);
     setSaveStatus('idle');
   }, []);
 
@@ -264,6 +289,7 @@ export function useConnectorsPage() {
     }));
     setFormFieldError(null);
     setFormError(null);
+    setSslUploadError(null);
     setSaveStatus('idle');
   }, []);
 
@@ -271,8 +297,45 @@ export function useConnectorsPage() {
     setFormDraft((prev) => switchSettingsDraftKind(prev, nextKind));
     setFormFieldError(null);
     setFormError(null);
+    setSslUploadError(null);
     setSaveStatus('idle');
   }, []);
+
+  const uploadSelectedConnectorSslCafile = useCallback(
+    async (file: File) => {
+      if (!selectedConnectorId || selectedConnector?.kind !== 'kafka') {
+        setSslUploadError('SSL certificate upload is available only for persisted kafka connectors.');
+        return { ok: false as const };
+      }
+
+      setSslUploadError(null);
+      setSslUploadInfo(null);
+      setIsUploadingSslCafile(true);
+
+      const result = await uploadConnectorSslCafile(selectedConnectorId, file);
+      setIsUploadingSslCafile(false);
+
+      if (result.error) {
+        const response = result.data;
+        if (isCommittedSslUpload(response) && hasReloadFailureAfterWriteCode(result.error, response.error?.code)) {
+          setReloadWarning(response.error?.message ?? 'SSL CA file uploaded, but runtime reload failed. SQLite state was kept.');
+          setSslUploadInfo(response.file);
+          setFormDraft(connectorToFormDraft(response.connector));
+          await reloadList(response.connector.id);
+          return { ok: true as const };
+        }
+        setSslUploadError(normalizeError(result.error));
+        return { ok: false as const };
+      }
+
+      setReloadWarning(null);
+      setSslUploadInfo(result.data.file);
+      setFormDraft(connectorToFormDraft(result.data.connector));
+      await reloadList(result.data.connector.id);
+      return { ok: true as const };
+    },
+    [reloadList, selectedConnector, selectedConnectorId],
+  );
 
   const saveForm = useCallback(async () => {
     setFormError(null);
@@ -385,9 +448,12 @@ export function useConnectorsPage() {
     isSaving,
     saveStatus,
     isDeleting,
+    isUploadingSslCafile,
     runtimeInfo,
     importState,
     reloadWarning,
+    sslUploadError,
+    sslUploadInfo,
     pendingDeleteId,
     viewMode,
     setFilter,
@@ -406,6 +472,7 @@ export function useConnectorsPage() {
     updateFormField,
     updateSettingsField,
     setFormKind,
+    uploadSelectedConnectorSslCafile,
     saveForm,
     removeSelected,
     reloadList,

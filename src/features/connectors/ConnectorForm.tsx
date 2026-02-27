@@ -1,18 +1,28 @@
 import { FormPageLayout } from '../../components/layouts';
 import { Button, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
 import { ConnectorSettingsFields } from './ConnectorSettingsFields';
-import type { ConnectorFormDraft, ConnectorFormFieldError,EditorMode } from './types';
+import type {
+  ConnectorFormDraft,
+  ConnectorFormFieldError,
+  EditorMode,
+  UploadedSslCafilePayload,
+} from './types';
 
 interface ConnectorFormProps {
   mode: Extract<EditorMode, 'create' | 'edit'>;
   draft: ConnectorFormDraft;
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
+  selectedConnectorId: string | null;
   formError: string | null;
   formFieldError: ConnectorFormFieldError | null;
+  sslUploadError: string | null;
+  sslUploadInfo: UploadedSslCafilePayload | null;
+  isUploadingSslCafile: boolean;
   onChange: <K extends keyof ConnectorFormDraft>(field: K, value: ConnectorFormDraft[K]) => void;
   onUpdateSettingsField: (field: string, value: string | boolean) => void;
   onKindChange: (kind: ConnectorFormDraft['kind']) => void;
+  onUploadSslCafile: (file: File) => Promise<{ ok: boolean }>;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -22,11 +32,16 @@ export function ConnectorForm({
   draft,
   isSaving,
   saveStatus,
+  selectedConnectorId,
   formError,
   formFieldError,
+  sslUploadError,
+  sslUploadInfo,
+  isUploadingSslCafile,
   onChange,
   onUpdateSettingsField,
   onKindChange,
+  onUploadSslCafile,
   onSave,
   onCancel,
 }: ConnectorFormProps) {
@@ -75,10 +90,15 @@ export function ConnectorForm({
             Settings
           </Text>
           <ConnectorSettingsFields
+            mode={mode}
+            connectorId={selectedConnectorId}
             settings={draft.settings}
-            disabled={isSaving}
+            disabled={isSaving || isUploadingSslCafile}
             fieldError={formFieldError}
+            sslUploadError={sslUploadError}
+            sslUploadInfo={sslUploadInfo}
             onChange={onUpdateSettingsField}
+            onUploadSslCafile={onUploadSslCafile}
           />
         </Stack>
       </Surface>

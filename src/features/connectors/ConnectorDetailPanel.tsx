@@ -5,6 +5,7 @@ import type {
   ConnectorFormDraft,
   ConnectorFormFieldError,
   EditorMode,
+  UploadedSslCafilePayload,
 } from './types';
 
 interface ConnectorDetailPanelProps {
@@ -18,11 +19,16 @@ interface ConnectorDetailPanelProps {
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
   isDeleting: boolean;
+  selectedConnectorId: string | null;
+  isUploadingSslCafile: boolean;
+  sslUploadError: string | null;
+  sslUploadInfo: UploadedSslCafilePayload | null;
   onBeginEdit: () => void;
   onDelete: () => void;
   onChangeDraft: <K extends keyof ConnectorFormDraft>(field: K, value: ConnectorFormDraft[K]) => void;
   onUpdateSettingsField: (field: string, value: string | boolean) => void;
   onKindChange: (kind: ConnectorFormDraft['kind']) => void;
+  onUploadSslCafile: (file: File) => Promise<{ ok: boolean }>;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -39,11 +45,16 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
     isSaving,
     saveStatus,
     isDeleting,
+    selectedConnectorId,
+    isUploadingSslCafile,
+    sslUploadError,
+    sslUploadInfo,
     onBeginEdit,
     onDelete,
     onChangeDraft,
     onUpdateSettingsField,
     onKindChange,
+    onUploadSslCafile,
     onSave,
     onCancel,
   } = props;
@@ -55,11 +66,16 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
         draft={draft}
         isSaving={isSaving}
         saveStatus={saveStatus}
+        selectedConnectorId={selectedConnectorId}
         formError={formError}
         formFieldError={formFieldError}
+        sslUploadError={sslUploadError}
+        sslUploadInfo={sslUploadInfo}
+        isUploadingSslCafile={isUploadingSslCafile}
         onChange={onChangeDraft}
         onUpdateSettingsField={onUpdateSettingsField}
         onKindChange={onKindChange}
+        onUploadSslCafile={onUploadSslCafile}
         onSave={onSave}
         onCancel={onCancel}
       />

@@ -110,7 +110,7 @@ describe('ConnectorsPage', () => {
     expect(screen.getByLabelText(/filter connectors/i)).toHaveValue('sql');
   });
 
-  it('renders form-based settings editors and kafka progressive fields', async () => {
+  it('renders form-based settings editors, gates TLS protocols in create mode, and removes SSL path input', async () => {
     mockList([]);
 
     render(<ConnectorsPage />);
@@ -126,14 +126,81 @@ describe('ConnectorsPage', () => {
 
     expect(screen.getByLabelText(/bootstrap servers/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/allowed topics/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/security protocol/i)).toBeInTheDocument();
+    const protocolSelect = screen.getByLabelText(/security protocol/i);
+    expect(protocolSelect).toBeInTheDocument();
     expect(screen.queryByLabelText(/sasl username/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/ssl ca file path/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/save connector first to enable ssl\/sasl_ssl and upload ca cert/i)).toBeInTheDocument();
+    expect(within(protocolSelect).getByRole('option', { name: 'SSL' })).toBeDisabled();
+    expect(within(protocolSelect).getByRole('option', { name: 'SASL_SSL' })).toBeDisabled();
+  });
 
-    fireEvent.change(screen.getByLabelText(/security protocol/i), { target: { value: 'SASL_SSL' } });
-    expect(screen.getByLabelText(/sasl username/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/sasl password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ssl ca file path/i)).toBeInTheDocument();
+  it('uploads kafka ssl cert in edit mode and handles committed reload failure', async () => {
+    const listSpy = vi.spyOn(connectorsApi, 'listConnectors');
+    const kafkaSslConnector: ConnectorDraft = {
+      ...kafkaConnector,
+      enabled: true,
+      settings: {
+        ...kafkaConnector.settings,
+        security_protocol: 'SSL',
+        ssl_cafile: '/tmp/certs/kafka_demo.crt',
+      },
+    };
+    listSpy
+      .mockResolvedValueOnce({
+        data: { connectors: [kafkaConnector], runtime: runtimePayload, import_state: importStatePayload },
+        error: null,
+      })
+      .mockResolvedValue({
+        data: { connectors: [kafkaSslConnector], runtime: runtimePayload, import_state: importStatePayload },
+        error: null,
+      });
+
+    const uploadSpy = vi.spyOn(connectorsApi, 'uploadConnectorSslCafile').mockResolvedValue({
+      data: {
+        uploaded: true,
+        connector: kafkaSslConnector,
+        file: {
+          path: '/tmp/certs/kafka_demo.crt',
+          size_bytes: 512,
+          sha256: '1234567890abcdef1234567890abcdef',
+        },
+        reload: {
+          attempted: true,
+          succeeded: false,
+          trigger: 'update',
+          reason: 'enabled_connector_config_changed',
+          runtime: runtimePayload,
+        },
+        runtime: runtimePayload,
+        import_state: importStatePayload,
+        error: {
+          message: 'SSL CA file uploaded but runtime reload failed',
+          type: 'server_error',
+          code: 'reload_failed_after_write',
+        },
+      },
+      error: {
+        message: 'SSL CA file uploaded but runtime reload failed',
+        code: 'reload_failed_after_write',
+        status: 500,
+      },
+    });
+
+    render(<ConnectorsPage />);
+    const list = await screen.findByRole('list', { name: /connector drafts/i });
+    fireEvent.click(within(list).getByRole('button', { name: /kafka_demo/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    fireEvent.change(screen.getByLabelText(/security protocol/i), { target: { value: 'SSL' } });
+
+    const file = new File(['-----BEGIN CERTIFICATE-----'], 'ca.pem', { type: 'application/x-pem-file' });
+    const fileInput = screen.getByLabelText(/ssl ca certificate/i);
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /upload certificate/i }));
+
+    await waitFor(() => expect(uploadSpy).toHaveBeenCalledWith('kafka_demo', expect.any(File)));
+    expect((await screen.findAllByText(/uploaded but runtime reload failed/i)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/current ca file: \/tmp\/certs\/kafka_demo\.crt/i)).toBeInTheDocument();
   });
 
   it('blocks save on invalid fields and creates connector from typed form values', async () => {

@@ -323,7 +323,13 @@ export function serializeSettingsDraft(settingsDraft: ConnectorSettingsDraft): S
 
   if (needsSslCafile) {
     const sslCafile = v.ssl_cafile.trim();
-    if (!sslCafile) return { ok: false, field: 'settings.ssl_cafile', message: 'SSL CA file path is required.' };
+    if (!sslCafile) {
+      return {
+        ok: false,
+        field: 'settings.ssl_cafile',
+        message: 'Upload SSL CA certificate before saving with SSL/SASL_SSL.',
+      };
+    }
     payload.ssl_cafile = sslCafile;
   }
 

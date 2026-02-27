@@ -90,6 +90,22 @@ export interface DeleteConnectorResponse {
   error?: MutationInlineError;
 }
 
+export interface UploadedSslCafilePayload {
+  path: string;
+  size_bytes: number;
+  sha256: string;
+}
+
+export interface UploadConnectorSslCafileResponse {
+  uploaded: true;
+  connector: ConnectorDraft;
+  file: UploadedSslCafilePayload;
+  reload: ReloadPayload;
+  runtime: RuntimePayload;
+  import_state: ImportStatePayload;
+  error?: MutationInlineError;
+}
+
 export interface ApiErrorEnvelope {
   error: {
     message: string;

@@ -7,6 +7,7 @@ import type {
   ConnectorsListResponse,
   CreateOrUpdateConnectorResponse,
   DeleteConnectorResponse,
+  UploadConnectorSslCafileResponse,
 } from './types';
 
 type ApiResult<T> =
@@ -30,6 +31,42 @@ async function requestJson<T>(path: string, init?: RequestInit, options?: { pres
         'Content-Type': 'application/json',
         ...(init?.headers ?? {}),
       },
+    });
+
+    const text = await response.text();
+    const parsed = text ? (JSON.parse(text) as unknown) : null;
+
+    if (!response.ok) {
+      const envelope = tryExtractErrorEnvelope(parsed);
+      return {
+        data: options?.preserveDataOnError ? (parsed as T) : null,
+        error: {
+          message: envelope?.error?.message ?? `Request failed with status ${response.status}`,
+          code: envelope?.error?.code,
+          param: envelope?.error?.param,
+          status: response.status,
+        },
+      };
+    }
+
+    return { data: parsed as T, error: null };
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown request error',
+      },
+    };
+  }
+}
+
+async function requestMultipart<T>(path: string, formData: FormData, options?: { preserveDataOnError?: boolean }): Promise<ApiResult<T>> {
+  const { apiBaseUrl } = getEnv();
+
+  try {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      method: 'POST',
+      body: formData,
     });
 
     const text = await response.text();
@@ -87,6 +124,16 @@ export function deleteConnector(connectorId: string) {
     {
       method: 'DELETE',
     },
+    { preserveDataOnError: true },
+  );
+}
+
+export function uploadConnectorSslCafile(connectorId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return requestMultipart<UploadConnectorSslCafileResponse>(
+    `/api/config/connectors/${encodeURIComponent(connectorId)}/ssl-cafile`,
+    formData,
     { preserveDataOnError: true },
   );
 }

@@ -131,5 +131,29 @@ describe('form-mappers', () => {
       },
     });
     expect(kafka.ok).toBe(false);
+    if (!kafka.ok) {
+      expect(kafka.field).toBe('settings.sasl_username');
+    }
+
+    const kafkaMissingCafile = serializeSettingsDraft({
+      kind: 'kafka',
+      values: {
+        bootstrap_servers_text: 'localhost:9092',
+        allowed_topics_text: 'ship_events',
+        security_protocol: 'SSL',
+        ssl_cafile: '',
+        sasl_mechanism: 'PLAIN',
+        sasl_username: '',
+        sasl_password: '',
+        client_id: '',
+        group_id: '',
+        request_timeout_ms: '',
+        source: '',
+      },
+    });
+    expect(kafkaMissingCafile.ok).toBe(false);
+    if (!kafkaMissingCafile.ok) {
+      expect(kafkaMissingCafile.message).toBe('Upload SSL CA certificate before saving with SSL/SASL_SSL.');
+    }
   });
 });
