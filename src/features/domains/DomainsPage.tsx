@@ -26,7 +26,6 @@ export function DomainsPage() {
       isDeleting={state.isDeleting}
       runtimeActiveKeys={state.runtimeInfo?.active_domain_keys ?? []}
       onFilterChange={state.setFilter}
-      onSelectInList={state.selectDomainInList}
       onEditRow={state.openEditForListRow}
       onStartDelete={state.startDeleteFromList}
       onCancelDelete={state.cancelDeleteFromList}
@@ -69,9 +68,9 @@ export function DomainsPage() {
   );
 
   return (
-    <Stack gap={16} className="domains-page">
+    <Stack gap={24} className="domains-page">
       <Inline justify="between" align="center" wrap gap={12} className="domains-toolbar">
-        <Stack gap={4}>
+        <Stack gap={8}>
           <Text as="h2" variant="h2" weight="bold">
             Agents Config
           </Text>
@@ -84,23 +83,15 @@ export function DomainsPage() {
         </Inline>
       </Inline>
 
-      <Surface as="section" className="domains-runtime-summary" padding={16}>
-        <Stack gap={8}>
-          <Text as="h3" variant="h3" weight="bold">
-            Runtime status
-          </Text>
-          <Text variant="small" tone="muted">
-            Runtime: {state.runtimeInfo?.last_reload?.succeeded ? 'healthy' : 'issue detected'}
-          </Text>
-          <Text variant="small" tone="muted">
-            Active agents: {state.runtimeInfo?.active_domain_keys.length ?? 0}
-          </Text>
-          <Text variant="small" tone="muted">
-            Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} · trigger=
-            {state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason={state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
-          </Text>
-        </Stack>
-      </Surface>
+      {state.viewMode === 'list' ? (
+        <Surface as="section" className="domains-runtime-summary" padding={12}>
+          <div className={`runtime-info-bar${state.runtimeInfo?.last_reload?.succeeded ? '' : ' runtime-info-bar--issue'}`}>
+            Runtime {state.runtimeInfo?.last_reload?.succeeded ? 'healthy' : 'issue'} ·{' '}
+            {state.runtimeInfo?.active_domain_keys.length ?? 0} active · Last reload{' '}
+            {state.runtimeInfo?.last_reload?.succeeded ? 'OK' : 'failed'}
+          </div>
+        </Surface>
+      ) : null}
 
       {state.reloadWarning ? (
         <Surface as="section" className="domains-warning" padding={16}>
@@ -115,19 +106,12 @@ export function DomainsPage() {
       ) : null}
 
       {state.viewMode === 'list' ? (
-        <Surface as="section" className="domains-view" padding={24}>
-          <Stack gap={12}>
-            <Text as="h2" variant="h2" weight="bold">
-              Agents
-            </Text>
-            {list}
-          </Stack>
-        </Surface>
+        <section className="domains-view">{list}</section>
       ) : (
         <Surface as="section" className="domains-view" padding={24}>
-          <Stack gap={12}>
+          <Stack className="domains-content" gap={12}>
             <Inline className="domains-view__header" justify="between" align="center" wrap gap={12}>
-              <Stack gap={4}>
+              <Stack gap={8}>
                 <Text as="h2" variant="h2" weight="bold">
                   Agent form
                 </Text>

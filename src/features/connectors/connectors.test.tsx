@@ -97,21 +97,20 @@ describe('ConnectorsPage', () => {
     render(<ConnectorsPage />);
 
     const table = await screen.findByRole('table', { name: /connector drafts/i });
-    expect(screen.getByText(/runtime:\s*healthy/i)).toBeInTheDocument();
-    expect(screen.getByText(/active connectors:\s*1/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/filter connectors/i)).toHaveAttribute('placeholder', 'Search by id or kind');
+    expect(screen.getByText(/runtime healthy/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 active/i)).toBeInTheDocument();
+    expect(screen.getByText(/last reload ok/i)).toBeInTheDocument();
     expect(within(table).getAllByText(/^error \(runtime\)$/i)).toHaveLength(2);
     expect(within(table).queryByText(/^enabled$/i)).not.toBeInTheDocument();
     expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: /edit sql_reader_local/i })).toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: /delete sql_reader_local/i })).toBeInTheDocument();
-
-    fireEvent.click(within(table).getByRole('button', { name: /^sql_reader_local$/i }));
-    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
+    expect(table.querySelectorAll('.data-table__menu-trigger')).toHaveLength(2);
 
     fireEvent.change(screen.getByLabelText(/filter connectors/i), { target: { value: 'sql' } });
     expect(screen.getByLabelText(/filter connectors/i)).toHaveValue('sql');
+    expect(screen.getByRole('button', { name: /clear connector search/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /clear connector search/i }));
+    expect(screen.getByLabelText(/filter connectors/i)).toHaveValue('');
   });
 
   it('renders a single disabled status chip for non-running disabled connectors', async () => {
@@ -127,7 +126,7 @@ describe('ConnectorsPage', () => {
     render(<ConnectorsPage />);
 
     const table = await screen.findByRole('table', { name: /connector drafts/i });
-    expect(within(table).getByText(/^disabled$/i)).toBeInTheDocument();
+    expect(within(table).queryAllByText(/^disabled$/i).length).toBeGreaterThan(0);
     expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
   });
 
@@ -229,7 +228,8 @@ describe('ConnectorsPage', () => {
 
     render(<ConnectorsPage />);
     const table = await screen.findByRole('table', { name: /connector drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /edit kafka_demo/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for kafka_demo/i));
+    fireEvent.click(within(table).getByLabelText(/edit kafka_demo/i));
 
     const file = new File(['-----BEGIN CERTIFICATE-----'], 'ca.pem', { type: 'application/x-pem-file' });
     const fileInput = screen.getByLabelText(/ssl ca certificate/i, { selector: 'input[type="file"]' });
@@ -423,7 +423,7 @@ describe('ConnectorsPage', () => {
     expect(screen.getByText(/edit connector: sql_reader_new/i)).toBeInTheDocument();
   });
 
-  it('opens detail edit from list actions and locks id/kind in edit mode', async () => {
+  it('opens detail edit from the row name and locks id/kind in edit mode', async () => {
     mockList([sqlConnector]);
     vi.spyOn(connectorsApi, 'replaceConnector').mockResolvedValue({
       data: successMutationResponse({
@@ -454,7 +454,7 @@ describe('ConnectorsPage', () => {
 
     render(<ConnectorsPage />);
     const table = await screen.findByRole('table', { name: /connector drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /edit sql_reader_local/i }));
+    fireEvent.click(within(table).getByRole('button', { name: /^sql_reader_local$/i }));
     expect(screen.getByRole('button', { name: /back to connectors list/i })).toBeInTheDocument();
 
     const idInput = screen.getByRole('textbox', { name: /^connector id$/i });
@@ -468,7 +468,8 @@ describe('ConnectorsPage', () => {
 
     expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
     const refreshedTable = await screen.findByRole('table', { name: /connector drafts/i });
-    fireEvent.click(within(refreshedTable).getByRole('button', { name: /edit sql_reader_local/i }));
+    fireEvent.click(within(refreshedTable).getByLabelText(/open actions for sql_reader_local/i));
+    fireEvent.click(within(refreshedTable).getByLabelText(/edit sql_reader_local/i));
     fireEvent.change(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i }), { target: { value: 'orders\nshipments' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
@@ -526,12 +527,14 @@ describe('ConnectorsPage', () => {
 
     render(<ConnectorsPage />);
     const table = await screen.findByRole('table', { name: /connector drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /delete sql_reader_local/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql_reader_local/i));
+    fireEvent.click(within(table).getByLabelText(/delete sql_reader_local/i));
     expect(within(table).getByRole('button', { name: /confirm delete sql_reader_local/i })).toBeInTheDocument();
     fireEvent.click(within(table).getByRole('button', { name: /cancel delete sql_reader_local/i }));
     expect(within(table).queryByRole('button', { name: /confirm delete sql_reader_local/i })).not.toBeInTheDocument();
 
-    fireEvent.click(within(table).getByRole('button', { name: /delete sql_reader_local/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql_reader_local/i));
+    fireEvent.click(within(table).getByLabelText(/delete sql_reader_local/i));
     fireEvent.click(within(table).getByRole('button', { name: /confirm delete sql_reader_local/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql_reader_local'));
@@ -544,7 +547,7 @@ describe('ConnectorsPage', () => {
 
     render(<ConnectorsPage />);
 
-    expect(await screen.findByRole('heading', { level: 2, name: /^connectors$/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: /^connectors config$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
   });
 });

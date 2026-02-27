@@ -26,7 +26,7 @@ describe('App', () => {
     expect(within(navigation).getByRole('button', { name: /runs/i })).toBeDisabled();
 
     expect(screen.getByRole('heading', { level: 2, name: /connectors config/i })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { level: 2, name: /^connectors$/i })).toBeInTheDocument();
+    expect(screen.getByText(/create and manage connector configs/i)).toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole('button', { name: /agents/i }));
     expect(within(navigation).getByRole('button', { name: /agents/i })).toHaveAttribute('aria-current', 'page');

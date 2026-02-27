@@ -118,29 +118,41 @@ describe('DomainsPage', () => {
     window.localStorage.clear();
   });
 
-  it('loads the agents table, supports filtering, and keeps row actions inline', async () => {
+  it('loads the agents table, supports filtering, and opens edit from the row name', async () => {
     mockList([sqlDomain, geoDomain]);
 
     render(<DomainsPage />);
 
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    expect(screen.getByText(/runtime:\s*healthy/i)).toBeInTheDocument();
-    expect(screen.getByText(/active agents:\s*1/i)).toBeInTheDocument();
-    expect(within(table).getByText(/^active$/i)).toBeInTheDocument();
-    expect(within(table).getByText(/^error \(runtime\)$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/filter agents/i)).toHaveAttribute(
+      'placeholder',
+      'Search by key, display name, tools, or routing intent',
+    );
+    expect(screen.getByText(/runtime healthy/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 active/i)).toBeInTheDocument();
+    expect(screen.getByText(/last reload ok/i)).toBeInTheDocument();
+    expect(within(table).queryAllByText(/^active$/i).length).toBeGreaterThan(0);
+    expect(within(table).queryAllByText(/^error \(runtime\)$/i).length).toBeGreaterThan(0);
     expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
     expect(within(table).queryByText(/^active tools$/i)).not.toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: /edit sql/i })).toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: /delete sql/i })).toBeInTheDocument();
+    expect(table.querySelectorAll('.data-table__menu-trigger')).toHaveLength(2);
 
-    const selectButton = within(table).getByRole('button', { name: /^sql$/i });
-    fireEvent.click(selectButton);
-    expect(selectButton.closest('tr')).toHaveClass('is-selected');
-    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/loading agents/i)).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /^sql$/i }));
+    expect(await screen.findByRole('button', { name: /back to agents list/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^agent key$/i })).toHaveValue('sql');
+    expect(screen.getByRole('textbox', { name: /^agent key$/i })).toBeDisabled();
+    expect(screen.queryByText(/runtime healthy/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /back to agents list/i }));
+    expect(await screen.findByRole('table', { name: /agent drafts/i })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
     expect(screen.getByLabelText(/filter agents/i)).toHaveValue('geo');
+    expect(screen.getByRole('button', { name: /clear agent search/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /clear agent search/i }));
+    expect(screen.getByLabelText(/filter agents/i)).toHaveValue('');
   });
 
   it('shows recall-only as a single chip when runtime is active', async () => {
@@ -161,7 +173,7 @@ describe('DomainsPage', () => {
     render(<DomainsPage />);
 
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    expect(within(table).getByText(/^recall-only$/i)).toBeInTheDocument();
+    expect(within(table).queryAllByText(/^recall-only$/i).length).toBeGreaterThan(0);
     expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
   });
 
@@ -260,7 +272,8 @@ describe('DomainsPage', () => {
     render(<DomainsPage />);
 
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql/i));
+    fireEvent.click(within(table).getByLabelText(/edit sql/i));
 
     const keyInput = screen.getByRole('textbox', { name: /agent key/i });
     expect(keyInput).toBeDisabled();
@@ -281,7 +294,8 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /delete sql/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql/i));
+    fireEvent.click(within(table).getByLabelText(/delete sql/i));
     const confirmContainer = within(table).getByRole('button', { name: /confirm delete sql/i }).closest('div');
     expect(confirmContainer?.className).toContain('data-table__actions--confirm');
     fireEvent.click(within(table).getByRole('button', { name: /confirm delete sql/i }));
@@ -349,7 +363,7 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
 
-    expect(await screen.findByRole('heading', { level: 2, name: /^agents$/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: /^agents config$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /back to agents list/i })).not.toBeInTheDocument();
   });
 
@@ -399,7 +413,8 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /delete sql/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql/i));
+    fireEvent.click(within(table).getByLabelText(/delete sql/i));
     fireEvent.click(within(table).getByRole('button', { name: /confirm delete sql/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql'));
@@ -411,7 +426,8 @@ describe('DomainsPage', () => {
     render(<DomainsPage />);
 
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql/i));
+    fireEvent.click(within(table).getByLabelText(/edit sql/i));
 
     const passthroughInput = screen.getByRole('combobox', { name: /^passthrough tool names$/i });
     const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
@@ -462,7 +478,8 @@ describe('DomainsPage', () => {
     render(<DomainsPage />);
 
     const table = await screen.findByRole('table', { name: /agent drafts/i });
-    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
+    fireEvent.click(within(table).getByLabelText(/open actions for sql/i));
+    fireEvent.click(within(table).getByLabelText(/edit sql/i));
 
     const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
     fireEvent.change(toolInput, { target: { value: 'db' } });
