@@ -10,11 +10,25 @@ interface ConnectorListProps {
   isDeleting: boolean;
   onFilterChange: (value: string) => void;
   onSelectInList: (id: string) => void;
-  onEditSelected: () => void;
+  onEditRow: (id: string) => void;
   onStartDelete: (id: string) => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onCreate: () => void;
+}
+
+function getConnectorStatus(connector: ConnectorDraft): { className: string; label: string } {
+  if (!connector.enabled) {
+    return connector.runtime_active
+      ? { className: 'status-danger', label: 'Error (runtime)' }
+      : { className: 'status-muted', label: 'Disabled' };
+  }
+
+  if (connector.runtime_active === true && connector.runtime_loaded !== false) {
+    return { className: 'status-success', label: 'Active' };
+  }
+
+  return { className: 'status-danger', label: 'Error (runtime)' };
 }
 
 export function ConnectorList({
@@ -26,7 +40,7 @@ export function ConnectorList({
   isDeleting,
   onFilterChange,
   onSelectInList,
-  onEditSelected,
+  onEditRow,
   onStartDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -57,95 +71,100 @@ export function ConnectorList({
       ) : null}
 
       {!isLoading && connectors.length > 0 ? (
-        <ul className="connectors-list" aria-label="Connector drafts">
-          {connectors.map((connector) => {
-            const active = connector.id === selectedConnectorId;
-            const confirmingDelete = pendingDeleteId === connector.id;
-            return (
-              <li key={connector.id}>
-                <button
-                  type="button"
-                  className={`connectors-list__row${active ? ' connectors-list__row--active connectors-list__row--selected' : ''}`}
-                  onClick={() => onSelectInList(connector.id)}
-                >
-                  <span>
-                    <Text as="span" weight="bold">
-                      {connector.id}
-                    </Text>
-                    <Text as="span" variant="small" tone="muted" className="connectors-list__sub">
-                      {connector.kind}
-                    </Text>
-                  </span>
-                  <Inline gap={8} align="center">
-                    <span className={`status-chip ${connector.enabled ? 'status-success' : 'status-warning'}`}>
-                      {connector.enabled ? 'enabled' : 'disabled'}
-                    </span>
-                    {connector.runtime_active ? (
-                      <span className="status-chip status-info connectors-runtime-chip">runtime active</span>
-                    ) : null}
-                  </Inline>
-                </button>
-
-                {active ? (
-                  <Inline gap={8} align="center" className={`connectors-list__actions${confirmingDelete ? ' connectors-list__actions-confirm' : ''}`}>
-                    {confirmingDelete ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="connectors-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void onConfirmDelete();
-                          }}
-                          isLoading={isDeleting}
-                        >
-                          Confirm delete
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="connectors-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onCancelDelete();
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="connectors-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEditSelected();
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="connectors-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onStartDelete(connector.id);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </>
-                    )}
-                  </Inline>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="data-table-wrap">
+          <table className="data-table connectors-table" aria-label="Connector drafts">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {connectors.map((connector) => {
+                const active = connector.id === selectedConnectorId;
+                const confirmingDelete = pendingDeleteId === connector.id;
+                const status = getConnectorStatus(connector);
+                return (
+                  <tr key={connector.id} className={active ? 'is-selected' : undefined}>
+                    <td>
+                      <button
+                        type="button"
+                        className="data-table__name-button"
+                        onClick={() => onSelectInList(connector.id)}
+                      >
+                        <Text as="span" weight="bold">
+                          {connector.id}
+                        </Text>
+                      </button>
+                    </td>
+                    <td>
+                      <Text as="span" variant="small" tone="muted">
+                        {connector.kind}
+                      </Text>
+                    </td>
+                    <td>
+                      <span className={`status-chip ${status.className}`}>{status.label}</span>
+                    </td>
+                    <td>
+                      <div className={`data-table__actions${confirmingDelete ? ' data-table__actions--confirm' : ''}`}>
+                        {confirmingDelete ? (
+                          <>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Confirm delete ${connector.id}`}
+                              onClick={() => {
+                                void onConfirmDelete();
+                              }}
+                              disabled={isDeleting}
+                            >
+                              Confirm delete
+                            </button>
+                            <span className="data-table__divider" aria-hidden="true">
+                              ·
+                            </span>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Cancel delete ${connector.id}`}
+                              onClick={onCancelDelete}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Edit ${connector.id}`}
+                              onClick={() => onEditRow(connector.id)}
+                            >
+                              Edit
+                            </button>
+                            <span className="data-table__divider" aria-hidden="true">
+                              ·
+                            </span>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Delete ${connector.id}`}
+                              onClick={() => onStartDelete(connector.id)}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </Stack>
   );

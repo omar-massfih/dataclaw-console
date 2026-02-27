@@ -735,105 +735,96 @@ a {
   border-top: 2px solid color-mix(in oklab, var(--color-primary) 24%, var(--color-surface));
 }
 
-.connectors-list {
-  list-style: none;
-  margin: 0;
+.data-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: 0 0 var(--space-10);
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-muted);
+}
+
+.data-table td {
+  padding: var(--space-12) var(--space-12) var(--space-12) 0;
+  vertical-align: middle;
+  border-top: 1px solid var(--color-border);
+}
+
+.data-table td:last-child,
+.data-table th:last-child {
+  padding-right: 0;
+}
+
+.data-table tbody tr.is-selected {
+  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
+}
+
+.data-table__name-button {
   padding: 0;
-  display: grid;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.data-table__name-button:hover {
+  color: var(--color-primary);
+}
+
+.data-table__name-button:focus-visible,
+.data-table__action-link:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--color-primary) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.data-table__actions {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-8);
+  flex-wrap: wrap;
 }
 
-.connectors-list__row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: var(--space-12) var(--space-16);
-  text-align: left;
-  cursor: pointer;
-}
-
-.connectors-list__row:hover {
-  border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-primary));
-}
-
-.domains-list__row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: var(--space-12) var(--space-16);
-  text-align: left;
-  cursor: pointer;
-}
-
-.domains-list__row:hover {
-  border-color: color-mix(in oklab, var(--color-border) 70%, var(--color-primary));
-}
-
-.connectors-list__row--active {
-  border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
-  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
-}
-
-.domains-list__row--active {
-  border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
-  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
-}
-
-.connectors-list__sub {
-  display: block;
-  margin-top: var(--space-4);
-}
-
-.domains-list__sub {
-  display: block;
-  margin-top: var(--space-4);
-}
-
-.connectors-list__actions {
-  margin-top: var(--space-8);
-  justify-content: flex-end;
-}
-
-.domains-list__actions {
-  margin-top: var(--space-8);
-  justify-content: flex-end;
-}
-
-.connectors-list__actions-confirm {
-  padding: var(--space-8);
+.data-table__actions--confirm {
+  padding: var(--space-6) var(--space-8);
   border: 1px solid color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
   border-radius: var(--radius-md);
   background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
 }
 
-.domains-list__actions-confirm {
-  padding: var(--space-8);
-  border: 1px solid color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
-  border-radius: var(--radius-md);
-  background: color-mix(in oklab, var(--color-warning) 8%, var(--color-surface));
+.data-table__action-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--font-weight-medium);
 }
 
-.connectors-list__actions-btn {
-  min-width: 120px;
+.data-table__action-link[disabled] {
+  cursor: progress;
+  color: var(--color-muted);
 }
 
-.domains-list__actions-btn {
-  min-width: 120px;
+.data-table__action-link:hover {
+  text-decoration: underline;
 }
 
-.domains-list__row--selected {
-  border-color: color-mix(in oklab, var(--color-primary) 50%, var(--color-border));
-  background: color-mix(in oklab, var(--color-primary) 4%, var(--color-surface));
+.data-table__divider {
+  color: var(--color-muted);
 }
 
 .connectors-detail {
@@ -1570,6 +1561,12 @@ a {
   border-color: color-mix(in oklab, var(--color-warning) 32%, var(--color-surface));
 }
 
+.status-muted {
+  color: var(--color-muted);
+  background: color-mix(in oklab, var(--color-border) 20%, var(--color-surface));
+  border-color: color-mix(in oklab, var(--color-border) 80%, var(--color-surface));
+}
+
 .status-danger {
   color: var(--color-danger);
   background: color-mix(in oklab, var(--color-danger) 14%, var(--color-surface));
@@ -1586,10 +1583,6 @@ a {
   color: var(--color-primary);
   background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface));
   border-color: color-mix(in oklab, var(--color-primary) 26%, var(--color-surface));
-}
-
-.connectors-runtime-chip {
-  white-space: nowrap;
 }
 
 .contract-grid {

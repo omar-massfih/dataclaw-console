@@ -254,6 +254,24 @@ export function useConnectorsPage() {
     setFormDraft(connectorToFormDraft(selectedConnector));
   }, [selectedConnector]);
 
+  const openEditForListRow = useCallback(
+    (id: string) => {
+      const connector = connectors.find((item) => item.id === id);
+      if (!connector) return;
+      setSelectedConnectorId(id);
+      setViewMode('detail');
+      setPendingDeleteId(null);
+      setMode('edit');
+      setSaveStatus('idle');
+      setFormError(null);
+      setFormFieldError(null);
+      setSslUploadError(null);
+      setSslUploadInfo(null);
+      setFormDraft(connectorToFormDraft(connector));
+    },
+    [connectors],
+  );
+
   const startDeleteFromList = useCallback((id: string) => {
     setSelectedConnectorId(id);
     setPendingDeleteId(id);
@@ -505,6 +523,7 @@ export function useConnectorsPage() {
     openListView,
     openDetailView,
     openEditFromList,
+    openEditForListRow,
     startDeleteFromList,
     cancelDeleteFromList,
     confirmDeleteFromList,

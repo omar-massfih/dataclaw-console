@@ -16,7 +16,7 @@ export function ConnectorsPage() {
       isDeleting={state.isDeleting}
       onFilterChange={state.setFilter}
       onSelectInList={state.selectConnectorInList}
-      onEditSelected={state.openEditFromList}
+      onEditRow={state.openEditForListRow}
       onStartDelete={state.startDeleteFromList}
       onCancelDelete={state.cancelDeleteFromList}
       onConfirmDelete={() => void state.confirmDeleteFromList()}

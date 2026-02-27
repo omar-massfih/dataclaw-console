@@ -118,30 +118,51 @@ describe('DomainsPage', () => {
     window.localStorage.clear();
   });
 
-  it('loads list, supports filtering, and shows row actions only for selected row', async () => {
+  it('loads the agents table, supports filtering, and keeps row actions inline', async () => {
     mockList([sqlDomain, geoDomain]);
 
     render(<DomainsPage />);
 
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    expect(within(list).getAllByRole('button').length).toBeGreaterThan(0);
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
     expect(screen.getByText(/runtime:\s*healthy/i)).toBeInTheDocument();
     expect(screen.getByText(/active agents:\s*1/i)).toBeInTheDocument();
+    expect(within(table).getByText(/^active$/i)).toBeInTheDocument();
+    expect(within(table).getByText(/^error \(runtime\)$/i)).toBeInTheDocument();
+    expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
+    expect(within(table).queryByText(/^active tools$/i)).not.toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: /edit sql/i })).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: /delete sql/i })).toBeInTheDocument();
 
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    const selectedRow = within(list)
-      .getAllByRole('button')
-      .find((button) => button.className.includes('domains-list__row--selected'));
-    await waitFor(() => {
-      expect(selectedRow).toBeDefined();
-      expect(selectedRow!.className).toContain('domains-list__row--active');
-      expect(selectedRow!.className).toContain('domains-list__row--selected');
-    });
-    expect(await screen.findByRole('button', { name: /^edit$/i })).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+    const selectButton = within(table).getByRole('button', { name: /^sql$/i });
+    fireEvent.click(selectButton);
+    expect(selectButton.closest('tr')).toHaveClass('is-selected');
+    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
     expect(screen.getByLabelText(/filter agents/i)).toHaveValue('geo');
+  });
+
+  it('shows recall-only as a single chip when runtime is active', async () => {
+    const recallOnlyDomain: DomainDraft = {
+      ...geoDomain,
+      key: 'recall',
+      is_recall_only: true,
+    };
+    vi.spyOn(domainsApi, 'listDomains').mockResolvedValue({
+      data: {
+        domains: [recallOnlyDomain],
+        runtime: { ...runtimePayload, active_domain_keys: ['recall'] },
+        import_state: importStatePayload,
+      },
+      error: null,
+    });
+
+    render(<DomainsPage />);
+
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    expect(within(table).getByText(/^recall-only$/i)).toBeInTheDocument();
+    expect(within(table).queryByText(/^runtime active$/i)).not.toBeInTheDocument();
   });
 
   it('uses server-ranked domain search for non-empty query', async () => {
@@ -156,7 +177,7 @@ describe('DomainsPage', () => {
     });
 
     render(<DomainsPage />);
-    await screen.findByRole('list', { name: /agent drafts/i });
+    await screen.findByRole('table', { name: /agent drafts/i });
 
     fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
 
@@ -164,9 +185,11 @@ describe('DomainsPage', () => {
       expect(searchSpy).toHaveBeenCalledWith({ q: 'geo', top_k: 50, min_score: 0 });
     });
 
-    const rows = screen.getAllByRole('button').filter((button) => button.className.includes('domains-list__row'));
-    expect(rows.length).toBe(1);
-    expect(rows[0]).toHaveTextContent(/^geo/i);
+    await waitFor(() => {
+      const refreshedTable = screen.getByRole('table', { name: /agent drafts/i });
+      expect(within(refreshedTable).getByRole('button', { name: /^geo$/i })).toBeInTheDocument();
+      expect(within(refreshedTable).queryByRole('button', { name: /^sql$/i })).not.toBeInTheDocument();
+    });
   });
 
   it('shows domain search warning and falls back to local list when search fails', async () => {
@@ -177,12 +200,12 @@ describe('DomainsPage', () => {
     });
 
     render(<DomainsPage />);
-    await screen.findByRole('list', { name: /agent drafts/i });
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
 
     fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
 
     expect(await screen.findByText(/search is unavailable right now/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^geo/i })).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: /^geo$/i })).toBeInTheDocument();
   });
 
   it('blocks save when key is missing and creates new domain draft', async () => {
@@ -236,9 +259,8 @@ describe('DomainsPage', () => {
     mockList([sqlDomain]);
     render(<DomainsPage />);
 
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
 
     const keyInput = screen.getByRole('textbox', { name: /agent key/i });
     expect(keyInput).toBeDisabled();
@@ -258,12 +280,11 @@ describe('DomainsPage', () => {
     });
 
     render(<DomainsPage />);
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
-    const confirmContainer = screen.getByRole('button', { name: /confirm delete/i }).closest('div');
-    expect(confirmContainer?.className).toContain('domains-list__actions-confirm');
-    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    fireEvent.click(within(table).getByRole('button', { name: /delete sql/i }));
+    const confirmContainer = within(table).getByRole('button', { name: /confirm delete sql/i }).closest('div');
+    expect(confirmContainer?.className).toContain('data-table__actions--confirm');
+    fireEvent.click(within(table).getByRole('button', { name: /confirm delete sql/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql'));
     expect(await screen.findByText(/at least one domain must remain configured/i)).toBeInTheDocument();
@@ -377,10 +398,9 @@ describe('DomainsPage', () => {
     });
 
     render(<DomainsPage />);
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /confirm delete/i }));
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    fireEvent.click(within(table).getByRole('button', { name: /delete sql/i }));
+    fireEvent.click(within(table).getByRole('button', { name: /confirm delete sql/i }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql'));
     expect((await screen.findAllByText(/deleted but runtime reload failed/i)).length).toBeGreaterThan(0);
@@ -390,9 +410,8 @@ describe('DomainsPage', () => {
     mockList([sqlDomain]);
     render(<DomainsPage />);
 
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
 
     const passthroughInput = screen.getByRole('combobox', { name: /^passthrough tool names$/i });
     const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
@@ -442,9 +461,8 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
 
-    const list = await screen.findByRole('list', { name: /agent drafts/i });
-    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    const table = await screen.findByRole('table', { name: /agent drafts/i });
+    fireEvent.click(within(table).getByRole('button', { name: /edit sql/i }));
 
     const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
     fireEvent.change(toolInput, { target: { value: 'db' } });

@@ -13,11 +13,21 @@ interface DomainListProps {
   runtimeActiveKeys: string[];
   onFilterChange: (value: string) => void;
   onSelectInList: (key: string) => void;
-  onEditSelected: () => void;
+  onEditRow: (key: string) => void;
   onStartDelete: (key: string) => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onCreate: () => void;
+}
+
+function getDomainStatus(domain: DomainDraft, runtimeActive: boolean): { className: string; label: string } {
+  if (!runtimeActive) {
+    return { className: 'status-danger', label: 'Error (runtime)' };
+  }
+
+  return domain.is_recall_only
+    ? { className: 'status-warning', label: 'Recall-only' }
+    : { className: 'status-success', label: 'Active' };
 }
 
 export function DomainList({
@@ -32,7 +42,7 @@ export function DomainList({
   runtimeActiveKeys,
   onFilterChange,
   onSelectInList,
-  onEditSelected,
+  onEditRow,
   onStartDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -73,98 +83,101 @@ export function DomainList({
       ) : null}
 
       {!isLoading && domains.length > 0 ? (
-        <ul className="domains-list" aria-label="Agent drafts">
-          {domains.map((domain) => {
-            const active = domain.key === selectedDomainKey;
-            const confirmingDelete = pendingDeleteKey === domain.key;
-            const runtimeActive = runtimeActiveKeys.includes(domain.key);
-            return (
-              <li key={domain.key}>
-                <button
-                  type="button"
-                  className={`domains-list__row${active ? ' domains-list__row--active domains-list__row--selected' : ''}`}
-                  onClick={() => onSelectInList(domain.key)}
-                >
-                  <span>
-                    <Text as="span" weight="bold">
-                      {domain.key}
-                    </Text>
-                    <Text as="span" variant="small" tone="muted" className="domains-list__sub">
-                      {domain.display_name || '(no display name)'}
-                    </Text>
-                  </span>
-                  <Inline gap={8} align="center">
-                    <span className={`status-chip ${domain.is_recall_only ? 'status-warning' : 'status-success'}`}>
-                      {domain.is_recall_only ? 'recall-only' : 'active tools'}
-                    </span>
-                    {runtimeActive ? <span className="status-chip status-info">runtime active</span> : null}
-                  </Inline>
-                </button>
-
-                {active ? (
-                  <Inline
-                    gap={8}
-                    align="center"
-                    className={`domains-list__actions${confirmingDelete ? ' domains-list__actions-confirm' : ''}`}
-                  >
-                    {confirmingDelete ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="domains-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void onConfirmDelete();
-                          }}
-                          isLoading={isDeleting}
-                        >
-                          Confirm delete
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="domains-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onCancelDelete();
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="domains-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEditSelected();
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="domains-list__actions-btn"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onStartDelete(domain.key);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </>
-                    )}
-                  </Inline>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="data-table-wrap">
+          <table className="data-table domains-table" aria-label="Agent drafts">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Display name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {domains.map((domain) => {
+                const active = domain.key === selectedDomainKey;
+                const confirmingDelete = pendingDeleteKey === domain.key;
+                const runtimeActive = runtimeActiveKeys.includes(domain.key);
+                const status = getDomainStatus(domain, runtimeActive);
+                return (
+                  <tr key={domain.key} className={active ? 'is-selected' : undefined}>
+                    <td>
+                      <button
+                        type="button"
+                        className="data-table__name-button"
+                        onClick={() => onSelectInList(domain.key)}
+                      >
+                        <Text as="span" weight="bold">
+                          {domain.key}
+                        </Text>
+                      </button>
+                    </td>
+                    <td>
+                      <Text as="span" variant="small" tone="muted">
+                        {domain.display_name || '(no display name)'}
+                      </Text>
+                    </td>
+                    <td>
+                      <span className={`status-chip ${status.className}`}>{status.label}</span>
+                    </td>
+                    <td>
+                      <div className={`data-table__actions${confirmingDelete ? ' data-table__actions--confirm' : ''}`}>
+                        {confirmingDelete ? (
+                          <>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Confirm delete ${domain.key}`}
+                              onClick={() => {
+                                void onConfirmDelete();
+                              }}
+                              disabled={isDeleting}
+                            >
+                              Confirm delete
+                            </button>
+                            <span className="data-table__divider" aria-hidden="true">
+                              ·
+                            </span>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Cancel delete ${domain.key}`}
+                              onClick={onCancelDelete}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Edit ${domain.key}`}
+                              onClick={() => onEditRow(domain.key)}
+                            >
+                              Edit
+                            </button>
+                            <span className="data-table__divider" aria-hidden="true">
+                              ·
+                            </span>
+                            <button
+                              type="button"
+                              className="data-table__action-link"
+                              aria-label={`Delete ${domain.key}`}
+                              onClick={() => onStartDelete(domain.key)}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </Stack>
   );

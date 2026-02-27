@@ -27,7 +27,7 @@ export function DomainsPage() {
       runtimeActiveKeys={state.runtimeInfo?.active_domain_keys ?? []}
       onFilterChange={state.setFilter}
       onSelectInList={state.selectDomainInList}
-      onEditSelected={state.openEditFromList}
+      onEditRow={state.openEditForListRow}
       onStartDelete={state.startDeleteFromList}
       onCancelDelete={state.cancelDeleteFromList}
       onConfirmDelete={() => void state.confirmDeleteFromList()}

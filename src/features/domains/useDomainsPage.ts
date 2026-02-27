@@ -332,6 +332,22 @@ export function useDomainsPage() {
     setFormDraft(domainToFormDraft(selectedDomain));
   }, [selectedDomain]);
 
+  const openEditForListRow = useCallback(
+    (key: string) => {
+      const domain = domains.find((item) => item.key === key);
+      if (!domain) return;
+      setSelectedDomainKey(key);
+      setViewMode('detail');
+      setPendingDeleteKey(null);
+      setMode('edit');
+      setSaveStatus('idle');
+      setFormError(null);
+      setFormFieldError(null);
+      setFormDraft(domainToFormDraft(domain));
+    },
+    [domains],
+  );
+
   const startDeleteFromList = useCallback((key: string) => {
     setSelectedDomainKey(key);
     setPendingDeleteKey(key);
@@ -541,6 +557,7 @@ export function useDomainsPage() {
     selectDomainInList,
     openListView,
     openEditFromList,
+    openEditForListRow,
     startDeleteFromList,
     cancelDeleteFromList,
     confirmDeleteFromList,
