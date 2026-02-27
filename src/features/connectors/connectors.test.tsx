@@ -110,7 +110,7 @@ describe('ConnectorsPage', () => {
     expect(screen.getByLabelText(/filter connectors/i)).toHaveValue('sql');
   });
 
-  it('renders form-based settings editors, gates TLS protocols in create mode, and removes SSL path input', async () => {
+  it('renders form-based settings editors, allows TLS selection in create mode, and removes SSL path input', async () => {
     mockList([]);
 
     render(<ConnectorsPage />);
@@ -118,31 +118,50 @@ describe('ConnectorsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /create first connector/i }));
 
     expect(screen.queryByLabelText(/settings \(json\)/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/database url/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/allowed tables/i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^database url$/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about basics section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about settings section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about sql reader section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about connector id/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about kind/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about enabled/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about database url/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about allowed tables/i })).toBeInTheDocument();
 
-    const kindSelect = screen.getByLabelText(/^kind$/i);
+    const kindSelect = screen.getByRole('combobox', { name: /^kind$/i });
     fireEvent.change(kindSelect, { target: { value: 'kafka' } });
 
-    expect(screen.getByLabelText(/bootstrap servers/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/allowed topics/i)).toBeInTheDocument();
-    const protocolSelect = screen.getByLabelText(/security protocol/i);
+    expect(screen.getByRole('textbox', { name: /^bootstrap servers \(one host:port per line\)$/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^allowed topics \(one per line\)$/i })).toBeInTheDocument();
+    const protocolSelect = screen.getByRole('combobox', { name: /^security protocol$/i });
     expect(protocolSelect).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about kafka section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about bootstrap servers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about allowed topics/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about security protocol/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about ssl ca certificate/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /about sasl username/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/sasl username/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/ssl ca file path/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/save connector first to enable ssl\/sasl_ssl and upload ca cert/i)).toBeInTheDocument();
-    expect(within(protocolSelect).getByRole('option', { name: 'SSL' })).toBeDisabled();
-    expect(within(protocolSelect).getByRole('option', { name: 'SASL_SSL' })).toBeDisabled();
+    expect(screen.getByText(/enter connector id first, then upload the certificate/i)).toBeInTheDocument();
+    expect(within(protocolSelect).getByRole('option', { name: 'SSL' })).toBeEnabled();
+    expect(within(protocolSelect).getByRole('option', { name: 'SASL_SSL' })).toBeEnabled();
+
+    fireEvent.change(protocolSelect, { target: { value: 'SASL_SSL' } });
+    expect(screen.getByRole('button', { name: /about sasl mechanism/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about sasl username/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about sasl password/i })).toBeInTheDocument();
   });
 
-  it('uploads kafka ssl cert in edit mode and handles committed reload failure', async () => {
+  it('uploads kafka ssl cert in persisted plaintext mode and handles committed reload failure', async () => {
     const listSpy = vi.spyOn(connectorsApi, 'listConnectors');
-    const kafkaSslConnector: ConnectorDraft = {
+    const kafkaPlaintextConnectorWithCert: ConnectorDraft = {
       ...kafkaConnector,
       enabled: true,
       settings: {
         ...kafkaConnector.settings,
-        security_protocol: 'SSL',
+        security_protocol: 'PLAINTEXT',
         ssl_cafile: '/tmp/certs/kafka_demo.crt',
       },
     };
@@ -152,14 +171,14 @@ describe('ConnectorsPage', () => {
         error: null,
       })
       .mockResolvedValue({
-        data: { connectors: [kafkaSslConnector], runtime: runtimePayload, import_state: importStatePayload },
+        data: { connectors: [kafkaPlaintextConnectorWithCert], runtime: runtimePayload, import_state: importStatePayload },
         error: null,
       });
 
     const uploadSpy = vi.spyOn(connectorsApi, 'uploadConnectorSslCafile').mockResolvedValue({
       data: {
         uploaded: true,
-        connector: kafkaSslConnector,
+        connector: kafkaPlaintextConnectorWithCert,
         file: {
           path: '/tmp/certs/kafka_demo.crt',
           size_bytes: 512,
@@ -191,16 +210,73 @@ describe('ConnectorsPage', () => {
     const list = await screen.findByRole('list', { name: /connector drafts/i });
     fireEvent.click(within(list).getByRole('button', { name: /kafka_demo/i }));
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
-    fireEvent.change(screen.getByLabelText(/security protocol/i), { target: { value: 'SSL' } });
 
     const file = new File(['-----BEGIN CERTIFICATE-----'], 'ca.pem', { type: 'application/x-pem-file' });
-    const fileInput = screen.getByLabelText(/ssl ca certificate/i);
+    const fileInput = screen.getByLabelText(/ssl ca certificate/i, { selector: 'input[type="file"]' });
     fireEvent.change(fileInput, { target: { files: [file] } });
     fireEvent.click(screen.getByRole('button', { name: /upload certificate/i }));
 
     await waitFor(() => expect(uploadSpy).toHaveBeenCalledWith('kafka_demo', expect.any(File)));
     expect((await screen.findAllByText(/uploaded but runtime reload failed/i)).length).toBeGreaterThan(0);
     expect(screen.getByText(/current ca file: \/tmp\/certs\/kafka_demo\.crt/i)).toBeInTheDocument();
+    expect(screen.getByText(/plaintext does not use it until you switch to ssl\/sasl_ssl/i)).toBeInTheDocument();
+  });
+
+  it('uploads kafka ssl cert in create mode by staging cert path only', async () => {
+    mockList([]);
+    const uploadStagedSpy = vi.spyOn(connectorsApi, 'uploadStagedSslCafile').mockResolvedValue({
+      data: {
+        uploaded: true,
+        file: {
+          path: '/tmp/certs/kafka_unsaved.crt',
+          size_bytes: 512,
+          sha256: 'abcdef1234567890abcdef1234567890',
+        },
+      },
+      error: null,
+    });
+    const uploadPersistedSpy = vi.spyOn(connectorsApi, 'uploadConnectorSslCafile').mockResolvedValue({
+      data: {
+        uploaded: true,
+        connector: kafkaConnector,
+        file: {
+          path: '/tmp/certs/kafka_demo.crt',
+          size_bytes: 512,
+          sha256: '1234567890abcdef1234567890abcdef',
+        },
+        reload: {
+          attempted: false,
+          succeeded: false,
+          trigger: 'update',
+          reason: 'disabled_only_update',
+          runtime: runtimePayload,
+        },
+        runtime: runtimePayload,
+        import_state: importStatePayload,
+      },
+      error: null,
+    });
+
+    render(<ConnectorsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /create first connector/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /^connector id$/i }), { target: { value: 'kafka_unsaved' } });
+    fireEvent.change(screen.getByRole('combobox', { name: /^kind$/i }), { target: { value: 'kafka' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^bootstrap servers/i }), {
+      target: { value: 'localhost:9092' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: /^allowed topics/i }), {
+      target: { value: 'ship_events' },
+    });
+
+    const file = new File(['-----BEGIN CERTIFICATE-----'], 'ca.pem', { type: 'application/x-pem-file' });
+    const fileInput = screen.getByLabelText(/ssl ca certificate/i, { selector: 'input[type="file"]' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /upload certificate/i }));
+
+    await waitFor(() => expect(uploadStagedSpy).toHaveBeenCalledTimes(1));
+    expect(uploadStagedSpy).toHaveBeenCalledWith(expect.any(File), 'kafka_unsaved');
+    expect(uploadPersistedSpy).not.toHaveBeenCalled();
+    expect(screen.getByText(/current ca file: \/tmp\/certs\/kafka_unsaved\.crt/i)).toBeInTheDocument();
   });
 
   it('blocks save on invalid fields and creates connector from typed form values', async () => {
@@ -239,15 +315,15 @@ describe('ConnectorsPage', () => {
     render(<ConnectorsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /create first connector/i }));
 
-    fireEvent.change(screen.getByLabelText(/connector id/i), { target: { value: 'milvus_demo' } });
-    fireEvent.change(screen.getByLabelText(/^kind$/i), { target: { value: 'milvus' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^connector id$/i }), { target: { value: 'milvus_demo' } });
+    fireEvent.change(screen.getByRole('combobox', { name: /^kind$/i }), { target: { value: 'milvus' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect((await screen.findAllByText(/milvus uri is required/i)).length).toBeGreaterThan(0);
     expect(createSpy).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/milvus uri/i), { target: { value: 'http://localhost:19530' } });
-    fireEvent.change(screen.getByLabelText(/collections \(one per line\)/i), { target: { value: 'ships' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^milvus uri$/i }), { target: { value: 'http://localhost:19530' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^collections \(one per line\)$/i }), { target: { value: 'ships' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
@@ -317,9 +393,9 @@ describe('ConnectorsPage', () => {
 
     render(<ConnectorsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /create first connector/i }));
-    fireEvent.change(screen.getByLabelText(/connector id/i), { target: { value: 'sql_reader_new' } });
-    fireEvent.change(screen.getByLabelText(/database url/i), { target: { value: 'sqlite:///tmp.db' } });
-    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^connector id$/i }), { target: { value: 'sql_reader_new' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^database url$/i }), { target: { value: 'sqlite:///tmp.db' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i }), { target: { value: 'orders' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect((await screen.findAllByText(/saved but runtime reload failed/i)).length).toBeGreaterThan(0);
@@ -362,26 +438,26 @@ describe('ConnectorsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
     expect(screen.getByRole('button', { name: /back to connectors list/i })).toBeInTheDocument();
 
-    const idInput = screen.getByLabelText(/connector id/i);
+    const idInput = screen.getByRole('textbox', { name: /^connector id$/i });
     const kindSelect = screen.getByRole('combobox', { name: /kind/i });
     expect(idInput).toBeDisabled();
     expect(kindSelect).toBeDisabled();
-    expect(screen.getByLabelText(/database url/i)).toHaveValue('sqlite:///tmp.db');
+    expect(screen.getByRole('textbox', { name: /^database url$/i })).toHaveValue('sqlite:///tmp.db');
 
-    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders\nshipments' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i }), { target: { value: 'orders\nshipments' } });
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     expect(screen.queryByRole('button', { name: /back to connectors list/i })).not.toBeInTheDocument();
     const refreshedList = await screen.findByRole('list', { name: /connector drafts/i });
     fireEvent.click(within(refreshedList).getByRole('button', { name: /sql_reader_local/i }));
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
-    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders\nshipments' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i }), { target: { value: 'orders\nshipments' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(connectorsApi.replaceConnector).toHaveBeenCalled());
     expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/allowed tables/i), { target: { value: 'orders' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^allowed tables \(one per line\)$/i }), { target: { value: 'orders' } });
     expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
   });
 

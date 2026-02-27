@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button, Input, Stack, Text } from '../../components/primitives';
+import { Button, FormSectionHeader, InfoTooltip, Input, Stack, Text } from '../../components/primitives';
 import type { ConnectorFormFieldError, EditorMode, KafkaSettingsDraft, UploadedSslCafilePayload } from './types';
 
 interface KafkaSettingsFieldsProps {
@@ -20,7 +20,6 @@ function getError(fieldError: ConnectorFormFieldError | null, field: string): st
 }
 
 export function KafkaSettingsFields({
-  mode,
   connectorId,
   settings,
   disabled,
@@ -33,14 +32,13 @@ export function KafkaSettingsFields({
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const needsSasl = settings.security_protocol === 'SASL_PLAINTEXT' || settings.security_protocol === 'SASL_SSL';
   const needsSslCafile = settings.security_protocol === 'SSL' || settings.security_protocol === 'SASL_SSL';
-  const canUseTlsProtocols = mode === 'edit' && Boolean(connectorId);
-  const canUpload = canUseTlsProtocols && Boolean(connectorId);
   const bootstrapError = getError(fieldError, 'settings.bootstrap_servers');
   const topicsError = getError(fieldError, 'settings.allowed_topics');
   const sslCafileError = getError(fieldError, 'settings.ssl_cafile');
+  const hasConnectorId = Boolean(connectorId?.trim());
 
   async function handleUpload() {
-    if (!selectedUploadFile || !canUpload) return;
+    if (!selectedUploadFile) return;
     const result = await onUploadSslCafile(selectedUploadFile);
     if (result.ok) {
       setSelectedUploadFile(null);
@@ -49,10 +47,21 @@ export function KafkaSettingsFields({
 
   return (
     <Stack gap={12}>
+      <FormSectionHeader
+        title="Kafka"
+        tooltip="Use this to connect to Kafka brokers and topics. Required fields depend on the security protocol."
+      />
       <label className="field-label">
-        Bootstrap servers (one `host:port` per line)
+        <span className="field-label__row">
+          <span className="field-label__title">Bootstrap servers (one `host:port` per line)</span>
+          <InfoTooltip
+            label="About Bootstrap servers"
+            content="Use this to list seed brokers as host:port, one per line. Required."
+          />
+        </span>
         <textarea
           className="field-input connectors-form-json"
+          aria-label="Bootstrap servers (one host:port per line)"
           rows={5}
           value={settings.bootstrap_servers_text}
           onChange={(event) => onChange('bootstrap_servers_text', event.target.value)}
@@ -64,9 +73,16 @@ export function KafkaSettingsFields({
       </label>
 
       <label className="field-label">
-        Allowed topics (one per line)
+        <span className="field-label__row">
+          <span className="field-label__title">Allowed topics (one per line)</span>
+          <InfoTooltip
+            label="About Allowed topics"
+            content="Use this to limit which topics this connector can read. Required."
+          />
+        </span>
         <textarea
           className="field-input connectors-form-json"
+          aria-label="Allowed topics (one per line)"
           rows={5}
           value={settings.allowed_topics_text}
           onChange={(event) => onChange('allowed_topics_text', event.target.value)}
@@ -78,9 +94,16 @@ export function KafkaSettingsFields({
       </label>
 
       <label className="field-label">
-        Security protocol
+        <span className="field-label__row">
+          <span className="field-label__title">Security protocol</span>
+          <InfoTooltip
+            label="About Security protocol"
+            content="Use this to choose how Kafka connects. This decides which SASL and SSL fields are required."
+          />
+        </span>
         <select
           className="field-input"
+          aria-label="Security protocol"
           value={settings.security_protocol}
           onChange={(event) => onChange('security_protocol', event.target.value)}
           disabled={disabled}
@@ -88,46 +111,50 @@ export function KafkaSettingsFields({
         >
           <option value="PLAINTEXT">PLAINTEXT</option>
           <option value="SASL_PLAINTEXT">SASL_PLAINTEXT</option>
-          <option value="SSL" disabled={!canUseTlsProtocols}>
+          <option value="SSL">
             SSL
           </option>
-          <option value="SASL_SSL" disabled={!canUseTlsProtocols}>
+          <option value="SASL_SSL">
             SASL_SSL
           </option>
         </select>
-        <span className="field-hint">SASL and SSL fields are shown only when required by the selected protocol.</span>
-        {!canUseTlsProtocols ? (
-          <span className="field-hint">Save connector first to enable SSL/SASL_SSL and upload CA cert.</span>
-        ) : null}
+        <span className="field-hint">Use this to choose connection mode. SASL and SSL fields show only when needed.</span>
       </label>
 
       <Stack gap={8}>
         <label className="field-label">
-          SSL CA certificate (.pem or .crt)
+          <span className="field-label__row">
+            <span className="field-label__title">SSL CA certificate (.pem or .crt)</span>
+            <InfoTooltip
+              label="About SSL CA certificate"
+              content="Use this to upload the CA certificate file. Required only when saving with SSL or SASL_SSL."
+            />
+          </span>
           <input
             className="field-input"
+            aria-label="SSL CA certificate (.pem or .crt)"
             type="file"
             accept=".pem,.crt"
-            disabled={disabled || !canUpload}
+            disabled={disabled}
             onChange={(event) => setSelectedUploadFile(event.target.files?.[0] ?? null)}
           />
         </label>
         <Button
           type="button"
           variant="secondary"
-          disabled={disabled || !selectedUploadFile || !canUpload}
+          disabled={disabled || !selectedUploadFile || !hasConnectorId}
           onClick={() => void handleUpload()}
         >
           Upload certificate
         </Button>
-        {!canUpload ? (
+        {!hasConnectorId ? (
           <Text variant="small" tone="muted">
-            Save this connector first, then upload the CA certificate.
+            Enter Connector ID first, then upload the certificate.
           </Text>
         ) : null}
         {!needsSslCafile ? (
           <Text variant="small" tone="muted">
-            Current protocol does not require SSL. Uploaded CA cert is kept for later SSL/SASL_SSL use.
+            Upload stores certificate path in this draft. PLAINTEXT does not use it until you switch to SSL/SASL_SSL.
           </Text>
         ) : null}
         {settings.ssl_cafile ? (
@@ -151,9 +178,16 @@ export function KafkaSettingsFields({
       {needsSasl ? (
         <>
           <label className="field-label">
-            SASL mechanism
+            <span className="field-label__row">
+              <span className="field-label__title">SASL mechanism</span>
+              <InfoTooltip
+                label="About SASL mechanism"
+                content="Use this to choose the SASL auth mechanism. Required for SASL protocols."
+              />
+            </span>
             <select
               className="field-input"
+              aria-label="SASL mechanism"
               value={settings.sasl_mechanism}
               onChange={(event) => onChange('sasl_mechanism', event.target.value)}
               disabled={disabled}
@@ -166,6 +200,7 @@ export function KafkaSettingsFields({
 
           <Input
             label="SASL username"
+            infoTooltip="Use this to set SASL username. Required for SASL protocols."
             value={settings.sasl_username}
             onChange={(event) => onChange('sasl_username', event.target.value)}
             disabled={disabled}
@@ -174,6 +209,7 @@ export function KafkaSettingsFields({
 
           <Input
             label="SASL password"
+            infoTooltip="Use this to set SASL password. Required for SASL protocols."
             type="password"
             value={settings.sasl_password}
             onChange={(event) => onChange('sasl_password', event.target.value)}
@@ -185,6 +221,7 @@ export function KafkaSettingsFields({
 
       <Input
         label="Client ID (optional)"
+        infoTooltip="Use this to set Kafka client ID. Optional."
         value={settings.client_id}
         onChange={(event) => onChange('client_id', event.target.value)}
         disabled={disabled}
@@ -193,6 +230,7 @@ export function KafkaSettingsFields({
 
       <Input
         label="Group ID (optional)"
+        infoTooltip="Use this to set consumer group ID. Optional."
         value={settings.group_id}
         onChange={(event) => onChange('group_id', event.target.value)}
         disabled={disabled}
@@ -200,6 +238,7 @@ export function KafkaSettingsFields({
 
       <Input
         label="Request timeout (ms) (optional)"
+        infoTooltip="Use this to set request timeout in milliseconds. Optional. Must be greater than 0."
         value={settings.request_timeout_ms}
         onChange={(event) => onChange('request_timeout_ms', event.target.value)}
         disabled={disabled}
@@ -208,16 +247,8 @@ export function KafkaSettingsFields({
         placeholder="30000"
       />
 
-      <Input
-        label="Source (optional)"
-        value={settings.source}
-        onChange={(event) => onChange('source', event.target.value)}
-        disabled={disabled}
-        placeholder="kafka"
-      />
-
       <Text variant="small" tone="muted">
-        Hidden protocol-specific fields are omitted when saving.
+        Use this form to set all options. Fields hidden by protocol are not sent on save.
       </Text>
     </Stack>
   );
