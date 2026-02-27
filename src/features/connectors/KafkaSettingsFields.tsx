@@ -101,49 +101,52 @@ export function KafkaSettingsFields({
         ) : null}
       </label>
 
-      {needsSslCafile ? (
-        <Stack gap={8}>
-          <label className="field-label">
-            SSL CA certificate (.pem or .crt)
-            <input
-              className="field-input"
-              type="file"
-              accept=".pem,.crt"
-              disabled={disabled || !canUpload}
-              onChange={(event) => setSelectedUploadFile(event.target.files?.[0] ?? null)}
-            />
-          </label>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={disabled || !selectedUploadFile || !canUpload}
-            onClick={() => void handleUpload()}
-          >
-            Upload certificate
-          </Button>
-          {!canUpload ? (
-            <Text variant="small" tone="muted">
-              Save this connector first, then upload the CA certificate.
-            </Text>
-          ) : null}
-          {settings.ssl_cafile ? (
-            <Text variant="small" tone="muted">
-              Current CA file: {settings.ssl_cafile}
-            </Text>
-          ) : null}
-          {sslUploadInfo ? (
-            <Text variant="small" tone="muted">
-              Uploaded: {sslUploadInfo.path} ({sslUploadInfo.size_bytes} bytes, sha256 {sslUploadInfo.sha256.slice(0, 12)}...)
-            </Text>
-          ) : null}
-          {sslUploadError ? (
-            <span className="field-error">{sslUploadError}</span>
-          ) : null}
-          {sslCafileError ? (
-            <span className="field-error">{sslCafileError}</span>
-          ) : null}
-        </Stack>
-      ) : null}
+      <Stack gap={8}>
+        <label className="field-label">
+          SSL CA certificate (.pem or .crt)
+          <input
+            className="field-input"
+            type="file"
+            accept=".pem,.crt"
+            disabled={disabled || !canUpload}
+            onChange={(event) => setSelectedUploadFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={disabled || !selectedUploadFile || !canUpload}
+          onClick={() => void handleUpload()}
+        >
+          Upload certificate
+        </Button>
+        {!canUpload ? (
+          <Text variant="small" tone="muted">
+            Save this connector first, then upload the CA certificate.
+          </Text>
+        ) : null}
+        {!needsSslCafile ? (
+          <Text variant="small" tone="muted">
+            Current protocol does not require SSL. Uploaded CA cert is kept for later SSL/SASL_SSL use.
+          </Text>
+        ) : null}
+        {settings.ssl_cafile ? (
+          <Text variant="small" tone="muted" className="connectors-path-break">
+            Current CA file: {settings.ssl_cafile}
+          </Text>
+        ) : null}
+        {sslUploadInfo ? (
+          <Text variant="small" tone="muted" className="connectors-path-break">
+            Uploaded: {sslUploadInfo.path} ({sslUploadInfo.size_bytes} bytes, sha256 {sslUploadInfo.sha256.slice(0, 12)}...)
+          </Text>
+        ) : null}
+        {sslUploadError ? (
+          <span className="field-error">{sslUploadError}</span>
+        ) : null}
+        {sslCafileError ? (
+          <span className="field-error">{sslCafileError}</span>
+        ) : null}
+      </Stack>
 
       {needsSasl ? (
         <>

@@ -69,23 +69,25 @@ export function ConnectorsPage() {
         </Inline>
       </Inline>
 
-      <Surface as="section" className="connectors-runtime-summary" padding={16}>
-        <Stack gap={8}>
-          <Text as="h3" variant="h3" weight="bold">
-            Runtime status
-          </Text>
-          <Text variant="small" tone="muted">
-            Runtime: {state.runtimeInfo?.last_reload?.succeeded ? 'healthy' : 'issue detected'}
-          </Text>
-          <Text variant="small" tone="muted">
-            Active connectors: {state.runtimeInfo?.active_connector_ids.length ?? 0}
-          </Text>
-          <Text variant="small" tone="muted">
-            Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} · trigger=
-            {state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason={state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
-          </Text>
-        </Stack>
-      </Surface>
+      {state.viewMode === 'list' ? (
+        <Surface as="section" className="connectors-runtime-summary" padding={16}>
+          <Stack gap={8}>
+            <Text as="h3" variant="h3" weight="bold">
+              Runtime status
+            </Text>
+            <Text variant="small" tone="muted">
+              Runtime: {state.runtimeInfo?.last_reload?.succeeded ? 'healthy' : 'issue detected'}
+            </Text>
+            <Text variant="small" tone="muted">
+              Active connectors: {state.runtimeInfo?.active_connector_ids.length ?? 0}
+            </Text>
+            <Text variant="small" tone="muted">
+              Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} · trigger=
+              {state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason={state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
+            </Text>
+          </Stack>
+        </Surface>
+      ) : null}
 
       {state.reloadWarning ? (
         <Surface as="section" className="connectors-warning" padding={16}>

@@ -96,7 +96,37 @@ describe('form-mappers', () => {
     if (result.ok) {
       expect(result.value.security_protocol).toBe('SSL');
       expect(result.value).toHaveProperty('ssl_cafile', '/tmp/ca.pem');
+      expect(result.value).not.toHaveProperty('sasl_mechanism');
       expect(result.value).not.toHaveProperty('sasl_username');
+      expect(result.value).not.toHaveProperty('sasl_password');
+    }
+  });
+
+  it('clears stale ssl/sasl settings when protocol is plaintext', () => {
+    const result = serializeSettingsDraft({
+      kind: 'kafka',
+      values: {
+        bootstrap_servers_text: 'localhost:9092',
+        allowed_topics_text: 'ship_events',
+        security_protocol: 'PLAINTEXT',
+        ssl_cafile: '/tmp/ca.pem',
+        sasl_mechanism: 'PLAIN',
+        sasl_username: 'user',
+        sasl_password: 'pass',
+        client_id: 'dataclaw',
+        group_id: '',
+        request_timeout_ms: '30000',
+        source: 'kafka',
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.security_protocol).toBe('PLAINTEXT');
+      expect(result.value).not.toHaveProperty('ssl_cafile');
+      expect(result.value).not.toHaveProperty('sasl_mechanism');
+      expect(result.value).not.toHaveProperty('sasl_username');
+      expect(result.value).not.toHaveProperty('sasl_password');
     }
   });
 
