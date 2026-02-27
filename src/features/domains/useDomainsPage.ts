@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { createDomain, deleteDomain, listDomains, replaceDomain } from './api';
+import { createDomain, deleteDomain, listAgentTools, listDomains, replaceDomain } from './api';
 import {
   createDefaultDomainFormDraft,
   domainToFormDraft,
   serializeDomainFormDraft,
 } from './form-mappers';
 import type {
+  AgentToolInfo,
   CreateOrUpdateDomainResponse,
   DeleteDomainResponse,
   DomainApiError,
@@ -48,6 +49,18 @@ function hasReloadFailureAfterWriteCode(error: DomainApiError | null, responseEr
   return Boolean(error?.code === 'reload_failed_after_write' || responseErrorCode === 'reload_failed_after_write');
 }
 
+function parseLineValues(text: string): string[] {
+  const values = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return Array.from(new Set(values));
+}
+
+function toLineValues(values: string[]): string {
+  return values.join('\n');
+}
+
 export function useDomainsPage() {
   const [domains, setDomains] = useState<DomainDraft[]>([]);
   const [selectedDomainKey, setSelectedDomainKey] = useState<string | null>(null);
@@ -65,6 +78,9 @@ export function useDomainsPage() {
   const [importState, setImportState] = useState<DomainImportStatePayload | null>(null);
   const [reloadWarning, setReloadWarning] = useState<string | null>(null);
   const [pendingDeleteKey, setPendingDeleteKey] = useState<string | null>(null);
+  const [availableTools, setAvailableTools] = useState<AgentToolInfo[]>([]);
+  const [isLoadingTools, setIsLoadingTools] = useState(false);
+  const [toolsError, setToolsError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<DomainsViewMode>(() => {
     if (typeof window === 'undefined') return 'list';
     const stored = window.localStorage.getItem(DOMAINS_VIEW_MODE_STORAGE_KEY);
@@ -115,6 +131,25 @@ export function useDomainsPage() {
   useEffect(() => {
     void reloadList();
   }, [reloadList]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoadingTools(true);
+    setToolsError(null);
+    void listAgentTools().then((result) => {
+      if (cancelled) return;
+      setIsLoadingTools(false);
+      if (result.error) {
+        setAvailableTools([]);
+        setToolsError(result.error.message);
+        return;
+      }
+      setAvailableTools(result.data ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -221,6 +256,70 @@ export function useDomainsPage() {
     setSaveStatus('idle');
   }, []);
 
+  const addToolName = useCallback((name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+    setFormDraft((prev) => {
+      const nextToolNames = Array.from(new Set([...parseLineValues(prev.tool_names_text), normalized]));
+      const nextPassthrough = parseLineValues(prev.passthrough_tool_names_text).filter((item) => nextToolNames.includes(item));
+      return {
+        ...prev,
+        tool_names_text: toLineValues(nextToolNames),
+        passthrough_tool_names_text: toLineValues(nextPassthrough),
+      };
+    });
+    setFormFieldError(null);
+    setFormError(null);
+    setSaveStatus('idle');
+  }, []);
+
+  const removeToolName = useCallback((name: string) => {
+    setFormDraft((prev) => {
+      const nextToolNames = parseLineValues(prev.tool_names_text).filter((item) => item !== name);
+      const nextPassthrough = parseLineValues(prev.passthrough_tool_names_text).filter((item) => nextToolNames.includes(item));
+      return {
+        ...prev,
+        tool_names_text: toLineValues(nextToolNames),
+        passthrough_tool_names_text: toLineValues(nextPassthrough),
+      };
+    });
+    setFormFieldError(null);
+    setFormError(null);
+    setSaveStatus('idle');
+  }, []);
+
+  const addPassthroughToolName = useCallback((name: string) => {
+    const normalized = name.trim();
+    if (!normalized) return;
+    setFormDraft((prev) => {
+      const nextToolNames = parseLineValues(prev.tool_names_text);
+      if (!nextToolNames.includes(normalized)) {
+        return prev;
+      }
+      const nextPassthrough = Array.from(new Set([...parseLineValues(prev.passthrough_tool_names_text), normalized]));
+      return {
+        ...prev,
+        passthrough_tool_names_text: toLineValues(nextPassthrough),
+      };
+    });
+    setFormFieldError(null);
+    setFormError(null);
+    setSaveStatus('idle');
+  }, []);
+
+  const removePassthroughToolName = useCallback((name: string) => {
+    setFormDraft((prev) => {
+      const nextPassthrough = parseLineValues(prev.passthrough_tool_names_text).filter((item) => item !== name);
+      return {
+        ...prev,
+        passthrough_tool_names_text: toLineValues(nextPassthrough),
+      };
+    });
+    setFormFieldError(null);
+    setFormError(null);
+    setSaveStatus('idle');
+  }, []);
+
   const saveForm = useCallback(async () => {
     setFormError(null);
     setFormFieldError(null);
@@ -320,6 +419,9 @@ export function useDomainsPage() {
     runtimeInfo,
     importState,
     reloadWarning,
+    availableTools,
+    isLoadingTools,
+    toolsError,
     pendingDeleteKey,
     viewMode,
     setFilter,
@@ -334,6 +436,10 @@ export function useDomainsPage() {
     beginEdit,
     cancelForm,
     updateFormField,
+    addToolName,
+    removeToolName,
+    addPassthroughToolName,
+    removePassthroughToolName,
     saveForm,
     removeSelected,
     reloadList,

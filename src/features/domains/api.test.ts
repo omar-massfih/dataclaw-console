@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createDomain, listDomains } from './api';
+import { createDomain, listAgentTools, listDomains } from './api';
 
 describe('domains api client', () => {
   afterEach(() => {
@@ -107,5 +107,45 @@ describe('domains api client', () => {
     expect(result.error).not.toBeNull();
     expect(result.error?.code).toBe('invalid_request_error');
     expect(result.data).toBeNull();
+  });
+
+  it('parses tools list from /v1/tools', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          object: 'list',
+          data: [
+            { name: 'db_query_sql', description: 'Query SQL', arguments_schema: { type: 'object' } },
+            { name: 'geo_show_map', description: 'Show map', arguments_schema: { type: 'object' } },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await listAgentTools();
+    expect(fetchMock).toHaveBeenCalled();
+    expect(result.error).toBeNull();
+    expect(result.data?.map((tool) => tool.name)).toEqual(['db_query_sql', 'geo_show_map']);
+  });
+
+  it('returns tool endpoint errors without breaking form fallback', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: 'Tool registry is not available',
+            type: 'invalid_request_error',
+            code: 'internal_error',
+          },
+        }),
+        { status: 500 },
+      ),
+    );
+
+    const result = await listAgentTools();
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toBe('Tool registry is not available');
+    expect(result.error?.status).toBe(500);
   });
 });

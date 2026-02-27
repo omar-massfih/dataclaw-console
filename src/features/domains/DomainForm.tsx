@@ -1,15 +1,26 @@
+import { useMemo, useState } from 'react';
+
 import { FormPageLayout } from '../../components/layouts';
 import { Button, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
-import type { DomainEditorMode, DomainFormDraft, DomainFormFieldError } from './types';
+import type { AgentToolInfo, DomainEditorMode, DomainFormDraft, DomainFormFieldError } from './types';
 
 interface DomainFormProps {
   mode: Extract<DomainEditorMode, 'create' | 'edit'>;
   draft: DomainFormDraft;
+  availableTools: AgentToolInfo[];
+  isLoadingTools: boolean;
+  toolsError: string | null;
+  toolNames: string[];
+  passthroughToolNames: string[];
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
   formError: string | null;
   formFieldError: DomainFormFieldError | null;
   onChange: <K extends keyof DomainFormDraft>(field: K, value: DomainFormDraft[K]) => void;
+  onAddToolName: (name: string) => void;
+  onRemoveToolName: (name: string) => void;
+  onAddPassthroughToolName: (name: string) => void;
+  onRemovePassthroughToolName: (name: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -21,14 +32,58 @@ function fieldErrorFor(fieldError: DomainFormFieldError | null, field: string): 
 export function DomainForm({
   mode,
   draft,
+  availableTools,
+  isLoadingTools,
+  toolsError,
+  toolNames,
+  passthroughToolNames,
   isSaving,
   saveStatus,
   formError,
   formFieldError,
   onChange,
+  onAddToolName,
+  onRemoveToolName,
+  onAddPassthroughToolName,
+  onRemovePassthroughToolName,
   onSave,
   onCancel,
 }: DomainFormProps) {
+  const [toolInput, setToolInput] = useState('');
+  const [passthroughInput, setPassthroughInput] = useState('');
+  const [passthroughValidationMessage, setPassthroughValidationMessage] = useState<string | null>(null);
+  const [toolValidationMessage, setToolValidationMessage] = useState<string | null>(null);
+
+  const selectedToolSet = useMemo(() => new Set(toolNames), [toolNames]);
+  const toolSuggestions = useMemo(
+    () => availableTools.filter((tool) => !selectedToolSet.has(tool.name)),
+    [availableTools, selectedToolSet],
+  );
+  const passthroughSuggestions = useMemo(
+    () => toolNames.filter((name) => !passthroughToolNames.includes(name)),
+    [passthroughToolNames, toolNames],
+  );
+
+  const addTool = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return;
+    onAddToolName(normalized);
+    setToolInput('');
+    setToolValidationMessage(null);
+  };
+
+  const addPassthrough = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return;
+    if (!selectedToolSet.has(normalized)) {
+      setPassthroughValidationMessage('Passthrough tools must be selected in Tool names first.');
+      return;
+    }
+    onAddPassthroughToolName(normalized);
+    setPassthroughInput('');
+    setPassthroughValidationMessage(null);
+  };
+
   const sections = (
     <>
       <Surface as="section">
@@ -118,24 +173,143 @@ export function DomainForm({
           <Text as="h3" variant="h3" weight="bold">
             Tools
           </Text>
-          <label className="field-label">
-            Tool names (one per line)
-            <textarea
-              className="field-input connectors-form-json"
-              rows={5}
-              value={draft.tool_names_text}
-              onChange={(event) => onChange('tool_names_text', event.target.value)}
-            />
-          </label>
-          <label className="field-label">
-            Passthrough tool names (one per line)
-            <textarea
-              className="field-input connectors-form-json"
-              rows={5}
-              value={draft.passthrough_tool_names_text}
-              onChange={(event) => onChange('passthrough_tool_names_text', event.target.value)}
-            />
-          </label>
+          <Stack gap={8} className="domains-tools-picker">
+            <Text as="label" variant="small" weight="medium">
+              Tool names
+            </Text>
+            <Inline className="domains-tools-picker__input-row" gap={8} align="end" wrap>
+              <input
+                className="field-input"
+                list="agent-tool-names-list"
+                value={toolInput}
+                onChange={(event) => setToolInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addTool(toolInput);
+                  }
+                }}
+                placeholder={isLoadingTools ? 'Loading tools...' : 'Add tool name'}
+                aria-label="Tool names"
+              />
+              <Button type="button" variant="secondary" onClick={() => addTool(toolInput)}>
+                Add
+              </Button>
+            </Inline>
+            <datalist id="agent-tool-names-list">
+              {availableTools.map((tool) => (
+                <option key={tool.name} value={tool.name} />
+              ))}
+            </datalist>
+            {toolValidationMessage ? <span className="field-error">{toolValidationMessage}</span> : null}
+            <div className="domains-tools-picker__chips" aria-label="Selected tool names">
+              {toolNames.length === 0 ? (
+                <Text tone="muted" variant="small">
+                  No tools selected.
+                </Text>
+              ) : (
+                toolNames.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="domains-tools-picker__chip domains-tools-picker__chip--selected"
+                    onClick={() => onRemoveToolName(name)}
+                    aria-label={`Remove tool ${name}`}
+                    title={`Remove ${name}`}
+                  >
+                    {name} <span aria-hidden="true">×</span>
+                  </button>
+                ))
+              )}
+            </div>
+            {toolSuggestions.length > 0 ? (
+              <div className="domains-tools-picker__suggestions">
+                {toolSuggestions.slice(0, 8).map((tool) => (
+                  <button
+                    key={tool.name}
+                    type="button"
+                    className="domains-tools-picker__chip domains-tools-picker__chip--suggestion"
+                    onClick={() => addTool(tool.name)}
+                    title={tool.description}
+                    aria-label={`Add tool ${tool.name}`}
+                  >
+                    {tool.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {toolsError ? (
+              <Text className="domains-tools-picker__warning" variant="small" tone="danger">
+                Couldn&apos;t load tool registry. You can still enter tool names manually.
+              </Text>
+            ) : null}
+          </Stack>
+
+          <Stack gap={8} className="domains-tools-picker">
+            <Text as="label" variant="small" weight="medium">
+              Passthrough tool names
+            </Text>
+            <Inline className="domains-tools-picker__input-row" gap={8} align="end" wrap>
+              <input
+                className="field-input"
+                list="agent-passthrough-tools-list"
+                value={passthroughInput}
+                onChange={(event) => setPassthroughInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addPassthrough(passthroughInput);
+                  }
+                }}
+                placeholder="Add passthrough tool"
+                aria-label="Passthrough tool names"
+              />
+              <Button type="button" variant="secondary" onClick={() => addPassthrough(passthroughInput)}>
+                Add
+              </Button>
+            </Inline>
+            <datalist id="agent-passthrough-tools-list">
+              {toolNames.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+            {passthroughValidationMessage ? <span className="field-error">{passthroughValidationMessage}</span> : null}
+            <div className="domains-tools-picker__chips" aria-label="Selected passthrough tool names">
+              {passthroughToolNames.length === 0 ? (
+                <Text tone="muted" variant="small">
+                  No passthrough tools selected.
+                </Text>
+              ) : (
+                passthroughToolNames.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="domains-tools-picker__chip domains-tools-picker__chip--selected"
+                    onClick={() => onRemovePassthroughToolName(name)}
+                    aria-label={`Remove passthrough tool ${name}`}
+                    title={`Remove ${name}`}
+                  >
+                    {name} <span aria-hidden="true">×</span>
+                  </button>
+                ))
+              )}
+            </div>
+            {passthroughSuggestions.length > 0 ? (
+              <div className="domains-tools-picker__suggestions">
+                {passthroughSuggestions.slice(0, 8).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="domains-tools-picker__chip domains-tools-picker__chip--suggestion"
+                    onClick={() => addPassthrough(name)}
+                    aria-label={`Add passthrough ${name}`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </Stack>
         </Stack>
       </Surface>
 

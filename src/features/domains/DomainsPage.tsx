@@ -5,6 +5,14 @@ import { useDomainsPage } from './useDomainsPage';
 
 export function DomainsPage() {
   const state = useDomainsPage();
+  const toolNames = state.formDraft.tool_names_text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line, index, items) => line.length > 0 && items.indexOf(line) === index);
+  const passthroughToolNames = state.formDraft.passthrough_tool_names_text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line, index, items) => line.length > 0 && items.indexOf(line) === index);
 
   const list = (
     <DomainList
@@ -30,6 +38,11 @@ export function DomainsPage() {
       mode={state.mode}
       selectedDomain={state.selectedDomain}
       draft={state.formDraft}
+      availableTools={state.availableTools}
+      isLoadingTools={state.isLoadingTools}
+      toolsError={state.toolsError}
+      toolNames={toolNames}
+      passthroughToolNames={passthroughToolNames}
       formError={state.formError}
       formFieldError={state.formFieldError}
       pageError={state.pageError}
@@ -40,6 +53,10 @@ export function DomainsPage() {
       onBeginEdit={state.beginEdit}
       onDelete={() => void state.removeSelected()}
       onChangeDraft={state.updateFormField}
+      onAddToolName={state.addToolName}
+      onRemoveToolName={state.removeToolName}
+      onAddPassthroughToolName={state.addPassthroughToolName}
+      onRemovePassthroughToolName={state.removePassthroughToolName}
       onSave={() => void state.saveForm()}
       onCancel={state.cancelForm}
     />

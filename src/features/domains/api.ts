@@ -3,6 +3,7 @@ import { getEnv } from '../../lib/env';
 import type { ApiResponse } from '../../types/api';
 import type {
   AgentHealthSnapshot,
+  AgentToolInfo,
   CreateOrUpdateDomainResponse,
   DeleteDomainResponse,
   DomainApiError,
@@ -10,6 +11,7 @@ import type {
   DomainDraft,
   DomainDraftInput,
   DomainsListResponse,
+  ListAgentToolsResponse,
 } from './types';
 
 type ApiResult<T> =
@@ -109,4 +111,72 @@ export function deleteDomain(domainKey: string) {
     },
     { preserveDataOnError: true },
   );
+}
+
+function extractTools(payload: unknown): AgentToolInfo[] {
+  if (!payload || typeof payload !== 'object' || !('data' in payload)) {
+    return [];
+  }
+  const data = (payload as ListAgentToolsResponse).data;
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  const mapped = data.map((item): AgentToolInfo | null => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      const name = (item as { name?: unknown }).name;
+      if (typeof name !== 'string' || !name.trim()) {
+        return null;
+      }
+      const description = (item as { description?: unknown }).description;
+      return {
+        name: name.trim(),
+        description: typeof description === 'string' ? description : '',
+        arguments_schema: (item as { arguments_schema?: unknown }).arguments_schema ?? null,
+      };
+    });
+  const tools = mapped.filter((item): item is AgentToolInfo => item !== null);
+  return tools.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+export async function listAgentTools(): Promise<{ data: AgentToolInfo[] | null; error: DomainApiError | null }> {
+  const { apiBaseUrl } = getEnv();
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/v1/tools`, { method: 'GET' });
+    const payload = (await response.json().catch(() => null)) as unknown;
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          message: getErrorMessage(payload, `Tools request failed with status ${response.status}`),
+          code: tryExtractErrorEnvelope(payload)?.error.code,
+          param: tryExtractErrorEnvelope(payload)?.error.param,
+          status: response.status,
+        },
+      };
+    }
+
+    return {
+      data: extractTools(payload),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown tools request error',
+      },
+    };
+  }
+}
+
+function getErrorMessage(payload: unknown, fallback: string): string {
+  const envelope = tryExtractErrorEnvelope(payload);
+  if (envelope?.error.message) {
+    return envelope.error.message;
+  }
+  return fallback;
 }

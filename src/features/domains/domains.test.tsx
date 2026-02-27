@@ -94,6 +94,17 @@ function successMutationResponse(domain: DomainDraft): CreateOrUpdateDomainRespo
 }
 
 describe('DomainsPage', () => {
+  beforeEach(() => {
+    vi.spyOn(domainsApi, 'listAgentTools').mockResolvedValue({
+      data: [
+        { name: 'db_query_sql', description: 'Query SQL', arguments_schema: { type: 'object' } },
+        { name: 'db_list_tables', description: 'List tables', arguments_schema: { type: 'object' } },
+        { name: 'geo_show_map', description: 'Show map', arguments_schema: { type: 'object' } },
+      ],
+      error: null,
+    });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
@@ -154,7 +165,8 @@ describe('DomainsPage', () => {
     fireEvent.change(screen.getByLabelText(/router description/i), { target: { value: 'sql routing' } });
     fireEvent.change(screen.getByLabelText(/step decider description/i), { target: { value: 'sql step' } });
     fireEvent.change(screen.getByLabelText(/system prompt/i), { target: { value: 'prompt' } });
-    fireEvent.change(screen.getByLabelText(/^tool names \(one per line\)$/i), { target: { value: 'db_query_sql' } });
+    fireEvent.change(screen.getByLabelText(/^tool names$/i), { target: { value: 'db_query_sql' } });
+    fireEvent.keyDown(screen.getByLabelText(/^tool names$/i), { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(createSpy).toHaveBeenCalled());
@@ -313,5 +325,44 @@ describe('DomainsPage', () => {
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql'));
     expect((await screen.findAllByText(/deleted but runtime reload failed/i)).length).toBeGreaterThan(0);
+  });
+
+  it('enforces passthrough as subset of selected tools', async () => {
+    mockList([sqlDomain]);
+    render(<DomainsPage />);
+
+    const list = await screen.findByRole('list', { name: /agent drafts/i });
+    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    fireEvent.change(screen.getByLabelText(/^passthrough tool names$/i), { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(screen.getByLabelText(/^passthrough tool names$/i), { key: 'Enter' });
+    expect(await screen.findByText(/passthrough tools must be selected in tool names first/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/^tool names$/i), { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(screen.getByLabelText(/^tool names$/i), { key: 'Enter' });
+    fireEvent.change(screen.getByLabelText(/^passthrough tool names$/i), { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(screen.getByLabelText(/^passthrough tool names$/i), { key: 'Enter' });
+    expect(screen.getByLabelText(/remove passthrough tool geo_show_map/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText(/remove tool geo_show_map/i));
+    expect(screen.queryByLabelText(/remove passthrough tool geo_show_map/i)).not.toBeInTheDocument();
+  });
+
+  it('falls back to manual tool entry when /v1/tools fails', async () => {
+    vi.spyOn(domainsApi, 'listAgentTools').mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Tool registry is not available', status: 500 },
+    });
+    mockList([]);
+    render(<DomainsPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /create first agent/i }));
+    expect(await screen.findByText(/couldn.t load tool registry/i)).toBeInTheDocument();
+
+    const toolInput = screen.getByLabelText(/^tool names$/i);
+    fireEvent.change(toolInput, { target: { value: 'manual_custom_tool' } });
+    fireEvent.keyDown(toolInput, { key: 'Enter' });
+    expect(screen.getByLabelText(/remove tool manual_custom_tool/i)).toBeInTheDocument();
   });
 });

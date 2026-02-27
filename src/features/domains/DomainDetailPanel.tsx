@@ -1,11 +1,16 @@
 import { Button, Inline, Stack, Surface, Text } from '../../components/primitives';
 import { DomainForm } from './DomainForm';
-import type { DomainDraft, DomainEditorMode, DomainFormDraft, DomainFormFieldError } from './types';
+import type { AgentToolInfo, DomainDraft, DomainEditorMode, DomainFormDraft, DomainFormFieldError } from './types';
 
 interface DomainDetailPanelProps {
   mode: DomainEditorMode;
   selectedDomain: DomainDraft | null;
   draft: DomainFormDraft;
+  availableTools: AgentToolInfo[];
+  isLoadingTools: boolean;
+  toolsError: string | null;
+  toolNames: string[];
+  passthroughToolNames: string[];
   formError: string | null;
   formFieldError: DomainFormFieldError | null;
   pageError: string | null;
@@ -16,6 +21,10 @@ interface DomainDetailPanelProps {
   onBeginEdit: () => void;
   onDelete: () => void;
   onChangeDraft: <K extends keyof DomainFormDraft>(field: K, value: DomainFormDraft[K]) => void;
+  onAddToolName: (name: string) => void;
+  onRemoveToolName: (name: string) => void;
+  onAddPassthroughToolName: (name: string) => void;
+  onRemovePassthroughToolName: (name: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -24,6 +33,11 @@ export function DomainDetailPanel({
   mode,
   selectedDomain,
   draft,
+  availableTools,
+  isLoadingTools,
+  toolsError,
+  toolNames,
+  passthroughToolNames,
   formError,
   formFieldError,
   pageError,
@@ -34,6 +48,10 @@ export function DomainDetailPanel({
   onBeginEdit,
   onDelete,
   onChangeDraft,
+  onAddToolName,
+  onRemoveToolName,
+  onAddPassthroughToolName,
+  onRemovePassthroughToolName,
   onSave,
   onCancel,
 }: DomainDetailPanelProps) {
@@ -42,11 +60,20 @@ export function DomainDetailPanel({
       <DomainForm
         mode={mode}
         draft={draft}
+        availableTools={availableTools}
+        isLoadingTools={isLoadingTools}
+        toolsError={toolsError}
+        toolNames={toolNames}
+        passthroughToolNames={passthroughToolNames}
         isSaving={isSaving}
         saveStatus={saveStatus}
         formError={formError}
         formFieldError={formFieldError}
         onChange={onChangeDraft}
+        onAddToolName={onAddToolName}
+        onRemoveToolName={onRemoveToolName}
+        onAddPassthroughToolName={onAddPassthroughToolName}
+        onRemovePassthroughToolName={onRemovePassthroughToolName}
         onSave={onSave}
         onCancel={onCancel}
       />

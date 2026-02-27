@@ -127,6 +127,17 @@ export interface DomainApiError {
   status?: number;
 }
 
+export interface AgentToolInfo {
+  name: string;
+  description: string;
+  arguments_schema: unknown;
+}
+
+export interface ListAgentToolsResponse {
+  object: string;
+  data: AgentToolInfo[];
+}
+
 export type DomainEditorMode = 'view' | 'create' | 'edit';
 
 export interface DomainFormDraft {
