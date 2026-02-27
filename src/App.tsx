@@ -2,22 +2,25 @@ import { useEffect, useState } from 'react';
 
 import agentAiLogo from './assets/agent-ai.svg';
 import chainLogo from './assets/chain.svg';
+import chatLogo from './assets/chat.svg';
 import { AppShell } from './components/layouts';
+import { ChatPage, useChatSession } from './features/chat';
 import { ConnectorsPage } from './features/connectors';
 import { DomainsPage } from './features/domains';
 
 const SIDEBAR_EXPANDED_STORAGE_KEY = 'app.sidebarExpanded.v1';
 
 interface NavItem {
-  id: 'connectors' | 'domains' | 'runs';
+  id: 'connectors' | 'domains' | 'chat' | 'runs';
   label: string;
   meta: string;
   disabled?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { id: 'connectors', label: 'Connectors', meta: 'Config drafts' },
-  { id: 'domains', label: 'Agents', meta: 'Config drafts' },
+  { id: 'connectors', label: 'Connectors', meta: 'Configure Connectors' },
+  { id: 'domains', label: 'Agents', meta: 'Configure Agents' },
+  { id: 'chat', label: 'Chat', meta: 'Chat with Agents' },
   { id: 'runs', label: 'Runs', meta: 'Coming soon', disabled: true },
 ];
 
@@ -29,13 +32,8 @@ function DomainsIcon() {
   return <img src={agentAiLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
 }
 
-function RunsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 19h12M8 7h8l-1 8H9L8 7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M10 3h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+function ChatIcon() {
+  return <img src={chatLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
 }
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
@@ -55,7 +53,7 @@ function getIcon(id: NavItem['id']) {
     return <DomainsIcon />;
   }
 
-  return <RunsIcon />;
+  return <ChatIcon />;
 }
 
 function getInitialSidebarExpanded() {
@@ -77,7 +75,8 @@ function getInitialSidebarExpanded() {
 
 export default function App() {
   const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(getInitialSidebarExpanded);
-  const [activePage, setActivePage] = useState<'connectors' | 'domains'>('connectors');
+  const [activePage, setActivePage] = useState<'connectors' | 'domains' | 'chat'>('connectors');
+  const chatSession = useChatSession();
 
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_EXPANDED_STORAGE_KEY, String(sidebarExpanded));
@@ -88,6 +87,7 @@ export default function App() {
   const appShellClassName = sidebarExpanded
     ? 'layout-app-shell--sidebar-expanded'
     : 'layout-app-shell--sidebar-collapsed';
+  const appShellContentClassName = activePage === 'chat' ? 'layout-app-shell__content--chat' : undefined;
 
   const sidebar = (
     <section className={sidebarClassName} data-expanded={sidebarExpanded ? 'true' : 'false'} aria-labelledby="sidebar-title">
@@ -122,6 +122,10 @@ export default function App() {
                   title={title}
                   onClick={() => {
                     if (item.disabled) return;
+                    if (item.id === 'chat') {
+                      setActivePage('chat');
+                      return;
+                    }
                     if (item.id === 'domains') {
                       setActivePage('domains');
                       return;
@@ -158,8 +162,10 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <AppShell sidebar={sidebar} className={appShellClassName}>
-        {activePage === 'domains' ? <DomainsPage /> : <ConnectorsPage />}
+      <AppShell sidebar={sidebar} className={appShellClassName} contentClassName={appShellContentClassName}>
+        {activePage === 'domains' ? <DomainsPage /> : null}
+        {activePage === 'chat' ? <ChatPage session={chatSession} /> : null}
+        {activePage === 'connectors' ? <ConnectorsPage /> : null}
       </AppShell>
     </main>
   );

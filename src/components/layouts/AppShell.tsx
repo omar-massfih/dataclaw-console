@@ -5,10 +5,12 @@ interface AppShellProps {
   header?: ReactNode;
   children: ReactNode;
   className?: string;
+  contentClassName?: string;
 }
 
-export function AppShell({ sidebar, header, children, className }: AppShellProps) {
+export function AppShell({ sidebar, header, children, className, contentClassName }: AppShellProps) {
   const classes = ['layout-app-shell', className ?? ''].filter(Boolean).join(' ');
+  const contentClasses = ['layout-app-shell__content', contentClassName ?? ''].filter(Boolean).join(' ');
 
   return (
     <div className={classes}>
@@ -18,7 +20,7 @@ export function AppShell({ sidebar, header, children, className }: AppShellProps
 
       <div className="layout-app-shell__main">
         {header ? <header className="layout-app-shell__header">{header}</header> : null}
-        <main className="layout-app-shell__content">{children}</main>
+        <main className={contentClasses}>{children}</main>
       </div>
     </div>
   );
