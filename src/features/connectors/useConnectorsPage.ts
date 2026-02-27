@@ -6,6 +6,7 @@ import {
   listConnectors,
   replaceConnector,
   uploadConnectorSslCafile,
+  uploadStagedSslCafile,
 } from './api';
 import {
   connectorToFormDraft,
@@ -169,6 +170,7 @@ export function useConnectorsPage() {
   );
 
   const beginCreate = useCallback(() => {
+    setSelectedConnectorId(null);
     setMode('create');
     setViewMode('detail');
     setSaveStatus('idle');
@@ -303,8 +305,48 @@ export function useConnectorsPage() {
 
   const uploadSelectedConnectorSslCafile = useCallback(
     async (file: File) => {
-      if (!selectedConnectorId || selectedConnector?.kind !== 'kafka') {
-        setSslUploadError('SSL certificate upload is available only for persisted kafka connectors.');
+      const uploadConnectorId = mode === 'edit' ? selectedConnectorId : formDraft.id.trim();
+      if (!uploadConnectorId) {
+        setSslUploadError('Connector ID is required before uploading a certificate.');
+        return { ok: false as const };
+      }
+
+      if (mode === 'create') {
+        if (formDraft.kind !== 'kafka') {
+          setSslUploadError('SSL certificate upload is supported only for Kafka connectors.');
+          return { ok: false as const };
+        }
+        setSslUploadError(null);
+        setSslUploadInfo(null);
+        setIsUploadingSslCafile(true);
+
+        const stagedResult = await uploadStagedSslCafile(file, uploadConnectorId);
+        setIsUploadingSslCafile(false);
+
+        if (stagedResult.error) {
+          setSslUploadError(normalizeError(stagedResult.error));
+          return { ok: false as const };
+        }
+
+        setReloadWarning(null);
+        setSslUploadInfo(stagedResult.data.file);
+        setFormDraft((prev) =>
+          prev.settings.kind === 'kafka'
+            ? {
+                ...prev,
+                settings: {
+                  ...prev.settings,
+                  values: {
+                    ...prev.settings.values,
+                    ssl_cafile: stagedResult.data.file.path,
+                  },
+                },
+              }
+            : prev,
+        );
+        return { ok: true as const };
+      } else if (selectedConnector?.kind !== 'kafka') {
+        setSslUploadError('SSL certificate upload is supported only for Kafka connectors.');
         return { ok: false as const };
       }
 
@@ -312,7 +354,7 @@ export function useConnectorsPage() {
       setSslUploadInfo(null);
       setIsUploadingSslCafile(true);
 
-      const result = await uploadConnectorSslCafile(selectedConnectorId, file);
+      const result = await uploadConnectorSslCafile(uploadConnectorId, file);
       setIsUploadingSslCafile(false);
 
       if (result.error) {
@@ -334,7 +376,7 @@ export function useConnectorsPage() {
       await reloadList(result.data.connector.id);
       return { ok: true as const };
     },
-    [reloadList, selectedConnector, selectedConnectorId],
+    [formDraft, mode, reloadList, selectedConnector, selectedConnectorId],
   );
 
   const saveForm = useCallback(async () => {

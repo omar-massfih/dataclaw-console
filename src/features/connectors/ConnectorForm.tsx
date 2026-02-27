@@ -1,5 +1,5 @@
 import { FormPageLayout } from '../../components/layouts';
-import { Button, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
+import { Button, FormSectionHeader, InfoTooltip, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
 import { ConnectorSettingsFields } from './ConnectorSettingsFields';
 import type {
   ConnectorFormDraft,
@@ -45,24 +45,34 @@ export function ConnectorForm({
   onSave,
   onCancel,
 }: ConnectorFormProps) {
+  const settingsConnectorId = mode === 'create' ? draft.id.trim() || null : selectedConnectorId;
   const sections = (
     <>
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Basics
-          </Text>
+          <FormSectionHeader
+            title="Basics"
+            tooltip="Use this to set connector identity and whether it runs. Connector ID and kind are locked after save."
+          />
           <Input
             label="Connector ID"
+            infoTooltip="Use this to name the connector in config and runtime. Required. You can't change it after save."
             value={draft.id}
             onChange={(event) => onChange('id', event.target.value)}
             disabled={mode === 'edit'}
             placeholder="sql_reader_local"
           />
           <label className="field-label">
-            Kind
+            <span className="field-label__row">
+              <span className="field-label__title">Kind</span>
+              <InfoTooltip
+                label="About Kind"
+                content="Use this to choose connector type (sql_reader, milvus, kafka). Required. You can't change it after save."
+              />
+            </span>
             <select
               className="field-input"
+              aria-label="Kind"
               value={draft.kind}
               onChange={(event) => onKindChange(event.target.value as ConnectorFormDraft['kind'])}
               disabled={mode === 'edit'}
@@ -76,22 +86,28 @@ export function ConnectorForm({
           <label className="field-checkbox">
             <input
               type="checkbox"
+              aria-label="Enabled"
               checked={draft.enabled}
               onChange={(event) => onChange('enabled', event.target.checked)}
             />
             <span>Enabled</span>
+            <InfoTooltip
+              label="About Enabled"
+              content="Use this to turn the connector on or off at runtime. Optional."
+            />
           </label>
         </Stack>
       </Surface>
 
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Settings
-          </Text>
+          <FormSectionHeader
+            title="Settings"
+            tooltip="Use this to set connector-specific options. Invalid combinations are rejected on save."
+          />
           <ConnectorSettingsFields
             mode={mode}
-            connectorId={selectedConnectorId}
+            connectorId={settingsConnectorId}
             settings={draft.settings}
             disabled={isSaving || isUploadingSslCafile}
             fieldError={formFieldError}
