@@ -104,6 +104,15 @@ export interface UploadConnectorSslCafileResponse {
   error?: MutationInlineError;
 }
 
+export interface UploadStagedSslCafileResponse {
+  uploaded: true;
+  file: {
+    path: string;
+    size_bytes: number;
+    sha256: string;
+  };
+}
+
 export type UploadedSslCafilePayload = UploadConnectorSslCafileResponse['file'];
 
 export interface ApiErrorEnvelope {

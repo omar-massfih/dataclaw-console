@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createConnector, listConnectors, uploadConnectorSslCafile } from './api';
+import { createConnector, listConnectors, uploadConnectorSslCafile, uploadStagedSslCafile } from './api';
 
 describe('connectors api client', () => {
   afterEach(() => {
@@ -136,6 +136,35 @@ describe('connectors api client', () => {
     expect(result.error).toBeNull();
     expect(result.data?.uploaded).toBe(true);
     expect(result.data?.file.path).toBe('/tmp/kafka_demo.crt');
+  });
+
+  it('uploads staged ssl cafile with multipart request', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          uploaded: true,
+          file: {
+            path: '/tmp/kafka_unsaved.crt',
+            size_bytes: 256,
+            sha256: 'def456',
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const file = new File(['-----BEGIN CERTIFICATE-----'], 'ca.pem', { type: 'application/x-pem-file' });
+    const result = await uploadStagedSslCafile(file, 'kafka_unsaved');
+
+    expect(fetchMock).toHaveBeenCalled();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toEqual(expect.stringContaining('/api/config/connectors/ssl-cafile'));
+    const body = init?.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('connector_id')).toBe('kafka_unsaved');
+    expect(result.error).toBeNull();
+    expect(result.data?.uploaded).toBe(true);
+    expect(result.data?.file.path).toBe('/tmp/kafka_unsaved.crt');
   });
 
   it('preserves upload envelope on non-2xx committed reload failure', async () => {

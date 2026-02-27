@@ -8,6 +8,7 @@ import type {
   CreateOrUpdateConnectorResponse,
   DeleteConnectorResponse,
   UploadConnectorSslCafileResponse,
+  UploadStagedSslCafileResponse,
 } from './types';
 
 type ApiResult<T> =
@@ -135,5 +136,18 @@ export function uploadConnectorSslCafile(connectorId: string, file: File) {
     `/api/config/connectors/${encodeURIComponent(connectorId)}/ssl-cafile`,
     formData,
     { preserveDataOnError: true },
+  );
+}
+
+export function uploadStagedSslCafile(file: File, connectorIdHint?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const trimmedId = connectorIdHint?.trim();
+  if (trimmedId) {
+    formData.append('connector_id', trimmedId);
+  }
+  return requestMultipart<UploadStagedSslCafileResponse>(
+    '/api/config/connectors/ssl-cafile',
+    formData,
   );
 }
