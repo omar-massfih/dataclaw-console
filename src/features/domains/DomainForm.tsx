@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { FormPageLayout } from '../../components/layouts';
-import { Button, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
+import { Button, FormSectionHeader, InfoTooltip, Inline, Input, Stack, Surface, Text } from '../../components/primitives';
 import type { AgentToolInfo, DomainEditorMode, DomainFormDraft, DomainFormFieldError } from './types';
 
 interface DomainFormProps {
@@ -10,6 +10,9 @@ interface DomainFormProps {
   availableTools: AgentToolInfo[];
   isLoadingTools: boolean;
   toolsError: string | null;
+  toolSearchHits: AgentToolInfo[];
+  isSearchingTools: boolean;
+  toolSearchError: string | null;
   toolNames: string[];
   passthroughToolNames: string[];
   isSaving: boolean;
@@ -21,6 +24,7 @@ interface DomainFormProps {
   onRemoveToolName: (name: string) => void;
   onAddPassthroughToolName: (name: string) => void;
   onRemovePassthroughToolName: (name: string) => void;
+  onToolSearchQueryChange: (query: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -35,6 +39,9 @@ export function DomainForm({
   availableTools,
   isLoadingTools,
   toolsError,
+  toolSearchHits,
+  isSearchingTools,
+  toolSearchError,
   toolNames,
   passthroughToolNames,
   isSaving,
@@ -46,6 +53,7 @@ export function DomainForm({
   onRemoveToolName,
   onAddPassthroughToolName,
   onRemovePassthroughToolName,
+  onToolSearchQueryChange,
   onSave,
   onCancel,
 }: DomainFormProps) {
@@ -55,9 +63,21 @@ export function DomainForm({
   const [toolValidationMessage, setToolValidationMessage] = useState<string | null>(null);
 
   const selectedToolSet = useMemo(() => new Set(toolNames), [toolNames]);
+  const availableToolNames = useMemo(() => new Set(availableTools.map((tool) => tool.name)), [availableTools]);
+  const toolQuery = toolInput.trim().toLowerCase();
+  const fallbackFilteredTools = useMemo(
+    () =>
+      availableTools.filter(
+        (tool) => !selectedToolSet.has(tool.name) && (!toolQuery || tool.name.toLowerCase().includes(toolQuery)),
+      ),
+    [availableTools, selectedToolSet, toolQuery],
+  );
   const toolSuggestions = useMemo(
-    () => availableTools.filter((tool) => !selectedToolSet.has(tool.name)),
-    [availableTools, selectedToolSet],
+    () =>
+      toolQuery && toolSearchHits.length > 0
+        ? toolSearchHits.filter((tool) => !selectedToolSet.has(tool.name))
+        : fallbackFilteredTools,
+    [fallbackFilteredTools, selectedToolSet, toolQuery, toolSearchHits],
   );
   const passthroughSuggestions = useMemo(
     () => toolNames.filter((name) => !passthroughToolNames.includes(name)),
@@ -67,8 +87,13 @@ export function DomainForm({
   const addTool = (value: string) => {
     const normalized = value.trim();
     if (!normalized) return;
+    if (!availableToolNames.has(normalized)) {
+      setToolValidationMessage('Use this to pick a tool from suggestions. Only existing tools are allowed.');
+      return;
+    }
     onAddToolName(normalized);
     setToolInput('');
+    onToolSearchQueryChange('');
     setToolValidationMessage(null);
   };
 
@@ -76,7 +101,7 @@ export function DomainForm({
     const normalized = value.trim();
     if (!normalized) return;
     if (!selectedToolSet.has(normalized)) {
-      setPassthroughValidationMessage('Passthrough tools must be selected in Tool names first.');
+      setPassthroughValidationMessage('Use this to add passthrough tools from Tool names only.');
       return;
     }
     onAddPassthroughToolName(normalized);
@@ -88,11 +113,13 @@ export function DomainForm({
     <>
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Basics
-          </Text>
+          <FormSectionHeader
+            title="Basics"
+            tooltip="Use this to set agent identity and behavior flags."
+          />
           <Input
             label="Agent key"
+            infoTooltip="Use this to name the agent key used by routing and storage. Required. You can't change it after save."
             value={draft.key}
             onChange={(event) => onChange('key', event.target.value)}
             disabled={mode === 'edit'}
@@ -101,6 +128,7 @@ export function DomainForm({
           />
           <Input
             label="Display name"
+            infoTooltip="Use this to set the display name shown in the UI. Required."
             value={draft.display_name}
             onChange={(event) => onChange('display_name', event.target.value)}
             placeholder="SQL"
@@ -112,6 +140,10 @@ export function DomainForm({
               onChange={(event) => onChange('supports_context_enrichment', event.target.checked)}
             />
             <span>Supports context enrichment</span>
+            <InfoTooltip
+              label="About Supports context enrichment"
+              content="Use this to allow extra context to be passed to this agent. Optional."
+            />
           </label>
           <label className="field-checkbox">
             <input
@@ -120,46 +152,79 @@ export function DomainForm({
               onChange={(event) => onChange('is_recall_only', event.target.checked)}
             />
             <span>Recall-only agent</span>
+            <InfoTooltip
+              label="About Recall-only agent"
+              content="Use this for agents that focus on recall-style responses. Optional."
+            />
           </label>
         </Stack>
       </Surface>
 
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Routing
-          </Text>
+          <FormSectionHeader
+            title="Routing"
+            tooltip="Use this to describe when the orchestrator should choose this agent."
+          />
           <label className="field-label">
-            Router description
+            <span className="field-label__row">
+              <span className="field-label__title">Router description</span>
+              <InfoTooltip
+                label="About Router description"
+                content="Use this to describe when this agent should be selected. Required."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="Router description"
               rows={3}
               value={draft.router_description}
               onChange={(event) => onChange('router_description', event.target.value)}
             />
           </label>
           <label className="field-label">
-            Step decider description
+            <span className="field-label__row">
+              <span className="field-label__title">Step decider description</span>
+              <InfoTooltip
+                label="About Step decider description"
+                content="Use this to guide step-by-step handoff decisions. Required."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="Step decider description"
               rows={3}
               value={draft.step_decider_description}
               onChange={(event) => onChange('step_decider_description', event.target.value)}
             />
           </label>
           <label className="field-label">
-            Router examples (one per line)
+            <span className="field-label__row">
+              <span className="field-label__title">Router examples (one per line)</span>
+              <InfoTooltip
+                label="About Router examples"
+                content="Use this to add example requests that should route here. Optional."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="Router examples"
               rows={5}
               value={draft.router_examples_text}
               onChange={(event) => onChange('router_examples_text', event.target.value)}
             />
           </label>
           <label className="field-label">
-            Routing keywords (one per line)
+            <span className="field-label__row">
+              <span className="field-label__title">Routing keywords (one per line)</span>
+              <InfoTooltip
+                label="About Routing keywords"
+                content="Use this to add keywords that help match this agent. Optional."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="Routing keywords"
               rows={5}
               value={draft.routing_keywords_text}
               onChange={(event) => onChange('routing_keywords_text', event.target.value)}
@@ -170,26 +235,38 @@ export function DomainForm({
 
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Tools
-          </Text>
+          <FormSectionHeader
+            title="Tools"
+            tooltip="Use this to choose tools this agent can call."
+          />
           <Stack gap={8} className="domains-tools-picker">
             <Text as="label" variant="small" weight="medium">
-              Tool names
+              <span className="field-label__row">
+                <span className="field-label__title">Tool names</span>
+                <InfoTooltip
+                  label="About Tool names"
+                  content="Use this to choose tools this agent may call. Required tools must exist in the registry."
+                />
+              </span>
             </Text>
             <Inline className="domains-tools-picker__input-row" gap={8} align="end" wrap>
               <input
                 className="field-input"
                 list="agent-tool-names-list"
                 value={toolInput}
-                onChange={(event) => setToolInput(event.target.value)}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setToolInput(next);
+                  setToolValidationMessage(null);
+                  onToolSearchQueryChange(next);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
                     event.preventDefault();
                     addTool(toolInput);
                   }
                 }}
-                placeholder={isLoadingTools ? 'Loading tools...' : 'Add tool name'}
+                placeholder={isLoadingTools ? 'Loading tools...' : 'Search and add tool name'}
                 aria-label="Tool names"
               />
               <Button type="button" variant="secondary" onClick={() => addTool(toolInput)}>
@@ -202,6 +279,16 @@ export function DomainForm({
               ))}
             </datalist>
             {toolValidationMessage ? <span className="field-error">{toolValidationMessage}</span> : null}
+            {toolInput.trim() && isSearchingTools ? (
+              <Text className="domains-tools-picker__search-status" variant="small" tone="muted">
+                Searching tools...
+              </Text>
+            ) : null}
+            {toolInput.trim() && toolSearchError ? (
+              <Text className="domains-tools-picker__search-warning" variant="small">
+                Tool search is unavailable. Use registry suggestions instead.
+              </Text>
+            ) : null}
             <div className="domains-tools-picker__chips" aria-label="Selected tool names">
               {toolNames.length === 0 ? (
                 <Text tone="muted" variant="small">
@@ -240,14 +327,20 @@ export function DomainForm({
             ) : null}
             {toolsError ? (
               <Text className="domains-tools-picker__warning" variant="small" tone="danger">
-                Couldn&apos;t load tool registry. You can still enter tool names manually.
+                Couldn&apos;t load tool registry. Tool names still need to match registered tools.
               </Text>
             ) : null}
           </Stack>
 
           <Stack gap={8} className="domains-tools-picker">
             <Text as="label" variant="small" weight="medium">
-              Passthrough tool names
+              <span className="field-label__row">
+                <span className="field-label__title">Passthrough tool names</span>
+                <InfoTooltip
+                  label="About Passthrough tool names"
+                  content="Use this to allow passthrough tools. Only tools already selected in Tool names are allowed."
+                />
+              </span>
             </Text>
             <Inline className="domains-tools-picker__input-row" gap={8} align="end" wrap>
               <input
@@ -315,22 +408,37 @@ export function DomainForm({
 
       <Surface as="section">
         <Stack gap={12}>
-          <Text as="h3" variant="h3" weight="bold">
-            Prompts
-          </Text>
+          <FormSectionHeader
+            title="Prompts"
+            tooltip="Use this to set the core instructions for this agent."
+          />
           <label className="field-label">
-            System prompt
+            <span className="field-label__row">
+              <span className="field-label__title">System prompt</span>
+              <InfoTooltip
+                label="About System prompt"
+                content="Use this to define the main instruction prompt for this agent. Required."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="System prompt"
               rows={6}
               value={draft.system_prompt}
               onChange={(event) => onChange('system_prompt', event.target.value)}
             />
           </label>
           <label className="field-label">
-            Specialist prompt rules (one per line)
+            <span className="field-label__row">
+              <span className="field-label__title">Specialist prompt rules (one per line)</span>
+              <InfoTooltip
+                label="About Specialist prompt rules"
+                content="Use this to add extra line-by-line rules for this agent. Optional."
+              />
+            </span>
             <textarea
               className="field-input connectors-form-json"
+              aria-label="Specialist prompt rules"
               rows={6}
               value={draft.specialist_prompt_rules_text}
               onChange={(event) => onChange('specialist_prompt_rules_text', event.target.value)}

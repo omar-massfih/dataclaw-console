@@ -138,6 +138,33 @@ export interface ListAgentToolsResponse {
   data: AgentToolInfo[];
 }
 
+export interface ConfigSearchRequest {
+  q: string;
+  top_k?: number;
+  min_score?: number;
+}
+
+export interface ConfigSearchHitPayload {
+  id: string;
+  score: number;
+  dense_score?: number;
+  keyword_score?: number;
+  snippet?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface SearchDomainsResponse {
+  query: string;
+  index: string;
+  hits: ConfigSearchHitPayload[];
+}
+
+export interface SearchToolsResponse {
+  query: string;
+  index: string;
+  hits: ConfigSearchHitPayload[];
+}
+
 export type DomainEditorMode = 'view' | 'create' | 'edit';
 
 export interface DomainFormDraft {

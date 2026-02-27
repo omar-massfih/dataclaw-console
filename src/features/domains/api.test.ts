@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createDomain, listAgentTools, listDomains } from './api';
+import { createDomain, listAgentTools, listDomains, searchDomainConfigs, searchToolConfigs } from './api';
 
 describe('domains api client', () => {
   afterEach(() => {
@@ -147,5 +147,72 @@ describe('domains api client', () => {
     expect(result.data).toBeNull();
     expect(result.error?.message).toBe('Tool registry is not available');
     expect(result.error?.status).toBe(500);
+  });
+
+  it('parses domain search hits from /api/config/search/domains', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          query: 'sql',
+          index: 'domains',
+          hits: [
+            { id: 'sql', score: 0.93, payload: { key: 'sql' } },
+            { id: 'geo', score: 0.51, payload: { key: 'geo' } },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await searchDomainConfigs({ q: 'sql', top_k: 50, min_score: 0 });
+    expect(fetchMock).toHaveBeenCalled();
+    expect(result.error).toBeNull();
+    expect(result.data?.hits.map((hit) => hit.payload?.key)).toEqual(['sql', 'geo']);
+  });
+
+  it('parses tool search hits from /api/config/search/tools', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          query: 'db',
+          index: 'tools',
+          hits: [{ id: 'db_query_table', score: 0.99, payload: { name: 'db_query_table' } }],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await searchToolConfigs({ q: 'db', top_k: 20, min_score: 0 });
+    expect(result.error).toBeNull();
+    expect(result.data?.hits[0]?.payload?.name).toBe('db_query_table');
+  });
+
+  it('returns search endpoint errors with envelope details', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: 'Query is required',
+            type: 'invalid_request_error',
+            code: 'invalid_request_error',
+            param: 'q',
+          },
+        }),
+        { status: 400 },
+      ),
+    );
+
+    const result = await searchDomainConfigs({ q: '' });
+    expect(result.data).toBeNull();
+    expect(result.error?.code).toBe('invalid_request_error');
+    expect(result.error?.param).toBe('q');
+  });
+
+  it('handles malformed search payloads with safe empty hits', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ query: 'x', hits: 'bad' }), { status: 200 }));
+
+    const result = await searchToolConfigs({ q: 'x' });
+    expect(result.error).toBeNull();
+    expect(result.data?.hits).toEqual([]);
   });
 });

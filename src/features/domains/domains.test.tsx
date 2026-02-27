@@ -103,6 +103,14 @@ describe('DomainsPage', () => {
       ],
       error: null,
     });
+    vi.spyOn(domainsApi, 'searchDomainConfigs').mockResolvedValue({
+      data: { query: '', index: 'domains', hits: [] },
+      error: null,
+    });
+    vi.spyOn(domainsApi, 'searchToolConfigs').mockResolvedValue({
+      data: { query: '', index: 'tools', hits: [] },
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -136,6 +144,47 @@ describe('DomainsPage', () => {
     expect(screen.getByLabelText(/filter agents/i)).toHaveValue('geo');
   });
 
+  it('uses server-ranked domain search for non-empty query', async () => {
+    mockList([sqlDomain, geoDomain]);
+    const searchSpy = vi.spyOn(domainsApi, 'searchDomainConfigs').mockResolvedValue({
+      data: {
+        query: 'geo',
+        index: 'domains',
+        hits: [{ id: 'geo', score: 0.92, payload: { key: 'geo' } }],
+      },
+      error: null,
+    });
+
+    render(<DomainsPage />);
+    await screen.findByRole('list', { name: /agent drafts/i });
+
+    fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith({ q: 'geo', top_k: 50, min_score: 0 });
+    });
+
+    const rows = screen.getAllByRole('button').filter((button) => button.className.includes('domains-list__row'));
+    expect(rows.length).toBe(1);
+    expect(rows[0]).toHaveTextContent(/^geo/i);
+  });
+
+  it('shows domain search warning and falls back to local list when search fails', async () => {
+    mockList([sqlDomain, geoDomain]);
+    vi.spyOn(domainsApi, 'searchDomainConfigs').mockResolvedValue({
+      data: null,
+      error: { message: 'Search backend unavailable', status: 500 },
+    });
+
+    render(<DomainsPage />);
+    await screen.findByRole('list', { name: /agent drafts/i });
+
+    fireEvent.change(screen.getByLabelText(/filter agents/i), { target: { value: 'geo' } });
+
+    expect(await screen.findByText(/search is unavailable right now/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^geo/i })).toBeInTheDocument();
+  });
+
   it('blocks save when key is missing and creates new domain draft', async () => {
     mockList([]);
     const createSpy = vi.spyOn(domainsApi, 'createDomain').mockResolvedValue({
@@ -155,18 +204,28 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /create first agent/i }));
+    expect(screen.getByRole('button', { name: /about basics section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about routing section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about tools section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about prompts section/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about agent key/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about display name/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about router description/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about tool names/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /about system prompt/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     expect(await screen.findByText(/domain key is required/i)).toBeInTheDocument();
     expect(createSpy).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/agent key/i), { target: { value: 'sql' } });
-    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: 'SQL' } });
-    fireEvent.change(screen.getByLabelText(/router description/i), { target: { value: 'sql routing' } });
-    fireEvent.change(screen.getByLabelText(/step decider description/i), { target: { value: 'sql step' } });
-    fireEvent.change(screen.getByLabelText(/system prompt/i), { target: { value: 'prompt' } });
-    fireEvent.change(screen.getByLabelText(/^tool names$/i), { target: { value: 'db_query_sql' } });
-    fireEvent.keyDown(screen.getByLabelText(/^tool names$/i), { key: 'Enter' });
+    fireEvent.change(screen.getByRole('textbox', { name: /^agent key$/i }), { target: { value: 'sql' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^display name$/i }), { target: { value: 'SQL' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^router description$/i }), { target: { value: 'sql routing' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^step decider description$/i }), { target: { value: 'sql step' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^system prompt$/i }), { target: { value: 'prompt' } });
+    const toolNamesInput = screen.getByRole('combobox', { name: /^tool names$/i });
+    fireEvent.change(toolNamesInput, { target: { value: 'db_query_sql' } });
+    fireEvent.keyDown(toolNamesInput, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(createSpy).toHaveBeenCalled());
@@ -181,7 +240,7 @@ describe('DomainsPage', () => {
     fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
-    const keyInput = screen.getByLabelText(/agent key/i);
+    const keyInput = screen.getByRole('textbox', { name: /agent key/i });
     expect(keyInput).toBeDisabled();
     expect(screen.getByRole('button', { name: /back to agents list/i })).toBeInTheDocument();
   });
@@ -256,10 +315,10 @@ describe('DomainsPage', () => {
 
     render(<DomainsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /create first agent/i }));
-    fireEvent.change(screen.getByLabelText(/agent key/i), { target: { value: 'sql' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^agent key$/i }), { target: { value: 'sql' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
-    expect((await screen.findAllByText(/saved but runtime reload failed/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/saved.*runtime reload failed/i)).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument();
   });
 
@@ -335,21 +394,24 @@ describe('DomainsPage', () => {
     fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
 
-    fireEvent.change(screen.getByLabelText(/^passthrough tool names$/i), { target: { value: 'geo_show_map' } });
-    fireEvent.keyDown(screen.getByLabelText(/^passthrough tool names$/i), { key: 'Enter' });
-    expect(await screen.findByText(/passthrough tools must be selected in tool names first/i)).toBeInTheDocument();
+    const passthroughInput = screen.getByRole('combobox', { name: /^passthrough tool names$/i });
+    const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
 
-    fireEvent.change(screen.getByLabelText(/^tool names$/i), { target: { value: 'geo_show_map' } });
-    fireEvent.keyDown(screen.getByLabelText(/^tool names$/i), { key: 'Enter' });
-    fireEvent.change(screen.getByLabelText(/^passthrough tool names$/i), { target: { value: 'geo_show_map' } });
-    fireEvent.keyDown(screen.getByLabelText(/^passthrough tool names$/i), { key: 'Enter' });
+    fireEvent.change(passthroughInput, { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(passthroughInput, { key: 'Enter' });
+    expect(await screen.findByText(/add passthrough tools from tool names only/i)).toBeInTheDocument();
+
+    fireEvent.change(toolInput, { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(toolInput, { key: 'Enter' });
+    fireEvent.change(passthroughInput, { target: { value: 'geo_show_map' } });
+    fireEvent.keyDown(passthroughInput, { key: 'Enter' });
     expect(screen.getByLabelText(/remove passthrough tool geo_show_map/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText(/remove tool geo_show_map/i));
     expect(screen.queryByLabelText(/remove passthrough tool geo_show_map/i)).not.toBeInTheDocument();
   });
 
-  it('falls back to manual tool entry when /v1/tools fails', async () => {
+  it('blocks adding unknown tool names when /v1/tools is unavailable', async () => {
     vi.spyOn(domainsApi, 'listAgentTools').mockResolvedValueOnce({
       data: null,
       error: { message: 'Tool registry is not available', status: 500 },
@@ -360,9 +422,43 @@ describe('DomainsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /create first agent/i }));
     expect(await screen.findByText(/couldn.t load tool registry/i)).toBeInTheDocument();
 
-    const toolInput = screen.getByLabelText(/^tool names$/i);
+    const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
     fireEvent.change(toolInput, { target: { value: 'manual_custom_tool' } });
     fireEvent.keyDown(toolInput, { key: 'Enter' });
-    expect(screen.getByLabelText(/remove tool manual_custom_tool/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pick a tool from suggestions/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/remove tool manual_custom_tool/i)).not.toBeInTheDocument();
+  });
+
+  it('uses /search/tools for ranked suggestions and falls back when search fails', async () => {
+    mockList([sqlDomain]);
+    const searchToolsSpy = vi.spyOn(domainsApi, 'searchToolConfigs').mockResolvedValue({
+      data: {
+        query: 'db',
+        index: 'tools',
+        hits: [{ id: 'db_list_tables', score: 0.95, payload: { name: 'db_list_tables' } }],
+      },
+      error: null,
+    });
+
+    render(<DomainsPage />);
+
+    const list = await screen.findByRole('list', { name: /agent drafts/i });
+    fireEvent.click(within(list).getByRole('button', { name: /^sql/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    const toolInput = screen.getByRole('combobox', { name: /^tool names$/i });
+    fireEvent.change(toolInput, { target: { value: 'db' } });
+
+    await waitFor(() => expect(searchToolsSpy).toHaveBeenCalledWith({ q: 'db', top_k: 20, min_score: 0 }));
+    expect(screen.getByRole('button', { name: /add tool db_list_tables/i })).toBeInTheDocument();
+
+    searchToolsSpy.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Tool search failed', status: 500 },
+    });
+    fireEvent.change(toolInput, { target: { value: 'geo' } });
+
+    expect(await screen.findByText(/tool search is unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add tool geo_show_map/i })).toBeInTheDocument();
   });
 });

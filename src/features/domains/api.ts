@@ -4,6 +4,8 @@ import type { ApiResponse } from '../../types/api';
 import type {
   AgentHealthSnapshot,
   AgentToolInfo,
+  ConfigSearchHitPayload,
+  ConfigSearchRequest,
   CreateOrUpdateDomainResponse,
   DeleteDomainResponse,
   DomainApiError,
@@ -12,6 +14,8 @@ import type {
   DomainDraftInput,
   DomainsListResponse,
   ListAgentToolsResponse,
+  SearchDomainsResponse,
+  SearchToolsResponse,
 } from './types';
 
 type ApiResult<T> =
@@ -171,6 +175,83 @@ export async function listAgentTools(): Promise<{ data: AgentToolInfo[] | null; 
       },
     };
   }
+}
+
+function extractSearchHits(payload: unknown): ConfigSearchHitPayload[] {
+  if (!payload || typeof payload !== 'object' || !('hits' in payload)) {
+    return [];
+  }
+  const hits = (payload as { hits?: unknown }).hits;
+  if (!Array.isArray(hits)) {
+    return [];
+  }
+  return hits
+    .map((hit): ConfigSearchHitPayload | null => {
+      if (!hit || typeof hit !== 'object') {
+        return null;
+      }
+      const id = (hit as { id?: unknown }).id;
+      const score = (hit as { score?: unknown }).score;
+      if (typeof id !== 'string' || typeof score !== 'number') {
+        return null;
+      }
+      const dense_score = (hit as { dense_score?: unknown }).dense_score;
+      const keyword_score = (hit as { keyword_score?: unknown }).keyword_score;
+      const snippet = (hit as { snippet?: unknown }).snippet;
+      const hitPayload = (hit as { payload?: unknown }).payload;
+      return {
+        id,
+        score,
+        dense_score: typeof dense_score === 'number' ? dense_score : undefined,
+        keyword_score: typeof keyword_score === 'number' ? keyword_score : undefined,
+        snippet: typeof snippet === 'string' ? snippet : undefined,
+        payload:
+          hitPayload && typeof hitPayload === 'object' && !Array.isArray(hitPayload)
+            ? (hitPayload as Record<string, unknown>)
+            : undefined,
+      };
+    })
+    .filter((hit): hit is ConfigSearchHitPayload => hit !== null);
+}
+
+function normalizeSearchResponse(payload: unknown, indexFallback: string): SearchDomainsResponse {
+  const query = payload && typeof payload === 'object' && typeof (payload as { query?: unknown }).query === 'string'
+    ? (payload as { query: string }).query
+    : '';
+  const index = payload && typeof payload === 'object' && typeof (payload as { index?: unknown }).index === 'string'
+    ? (payload as { index: string }).index
+    : indexFallback;
+  return {
+    query,
+    index,
+    hits: extractSearchHits(payload),
+  };
+}
+
+export async function searchDomainConfigs(
+  input: ConfigSearchRequest,
+): Promise<{ data: SearchDomainsResponse | null; error: DomainApiError | null }> {
+  const result = await requestJson<unknown>('/api/config/search/domains', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (result.error) {
+    return { data: null, error: result.error };
+  }
+  return { data: normalizeSearchResponse(result.data, 'domains'), error: null };
+}
+
+export async function searchToolConfigs(
+  input: ConfigSearchRequest,
+): Promise<{ data: SearchToolsResponse | null; error: DomainApiError | null }> {
+  const result = await requestJson<unknown>('/api/config/search/tools', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  if (result.error) {
+    return { data: null, error: result.error };
+  }
+  return { data: normalizeSearchResponse(result.data, 'tools'), error: null };
 }
 
 function getErrorMessage(payload: unknown, fallback: string): string {

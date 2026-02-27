@@ -21,6 +21,8 @@ export function DomainsPage() {
       pendingDeleteKey={state.pendingDeleteKey}
       filter={state.filter}
       isLoading={state.isLoadingList}
+      isSearchingDomains={state.isSearchingDomains}
+      domainsSearchError={state.domainsSearchError}
       isDeleting={state.isDeleting}
       runtimeActiveKeys={state.runtimeInfo?.active_domain_keys ?? []}
       onFilterChange={state.setFilter}
@@ -41,6 +43,9 @@ export function DomainsPage() {
       availableTools={state.availableTools}
       isLoadingTools={state.isLoadingTools}
       toolsError={state.toolsError}
+      toolSearchHits={state.toolSearchHits}
+      isSearchingTools={state.isSearchingTools}
+      toolSearchError={state.toolSearchError}
       toolNames={toolNames}
       passthroughToolNames={passthroughToolNames}
       formError={state.formError}
@@ -57,6 +62,7 @@ export function DomainsPage() {
       onRemoveToolName={state.removeToolName}
       onAddPassthroughToolName={state.addPassthroughToolName}
       onRemovePassthroughToolName={state.removePassthroughToolName}
+      onToolSearchQueryChange={state.setToolSearchQuery}
       onSave={() => void state.saveForm()}
       onCancel={state.cancelForm}
     />

@@ -7,6 +7,8 @@ interface DomainListProps {
   pendingDeleteKey: string | null;
   filter: string;
   isLoading: boolean;
+  isSearchingDomains: boolean;
+  domainsSearchError: string | null;
   isDeleting: boolean;
   runtimeActiveKeys: string[];
   onFilterChange: (value: string) => void;
@@ -24,6 +26,8 @@ export function DomainList({
   pendingDeleteKey,
   filter,
   isLoading,
+  isSearchingDomains,
+  domainsSearchError,
   isDeleting,
   runtimeActiveKeys,
   onFilterChange,
@@ -38,10 +42,20 @@ export function DomainList({
     <Stack gap={12}>
       <Input
         aria-label="Filter agents"
-        placeholder="Filter by key or display name"
+        placeholder="Search agents by key, display name, tools, or routing intent"
         value={filter}
         onChange={(event) => onFilterChange(event.target.value)}
       />
+      {filter.trim() ? (
+        <Text variant="small" tone="muted">
+          {isSearchingDomains ? 'Searching agents...' : 'Showing ranked search results.'}
+        </Text>
+      ) : null}
+      {domainsSearchError ? (
+        <Text variant="small" className="domains-list__search-warning">
+          Search is unavailable right now. Showing local results.
+        </Text>
+      ) : null}
 
       {isLoading ? <Text tone="muted">Loading agents...</Text> : null}
 

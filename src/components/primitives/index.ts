@@ -1,5 +1,7 @@
 export * from './Button';
+export * from './FormSectionHeader';
 export * from './Grid';
+export * from './InfoTooltip';
 export * from './Inline';
 export * from './Input';
 export * from './Stack';

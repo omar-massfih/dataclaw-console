@@ -9,6 +9,9 @@ interface DomainDetailPanelProps {
   availableTools: AgentToolInfo[];
   isLoadingTools: boolean;
   toolsError: string | null;
+  toolSearchHits: AgentToolInfo[];
+  isSearchingTools: boolean;
+  toolSearchError: string | null;
   toolNames: string[];
   passthroughToolNames: string[];
   formError: string | null;
@@ -25,6 +28,7 @@ interface DomainDetailPanelProps {
   onRemoveToolName: (name: string) => void;
   onAddPassthroughToolName: (name: string) => void;
   onRemovePassthroughToolName: (name: string) => void;
+  onToolSearchQueryChange: (query: string) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -36,6 +40,9 @@ export function DomainDetailPanel({
   availableTools,
   isLoadingTools,
   toolsError,
+  toolSearchHits,
+  isSearchingTools,
+  toolSearchError,
   toolNames,
   passthroughToolNames,
   formError,
@@ -52,6 +59,7 @@ export function DomainDetailPanel({
   onRemoveToolName,
   onAddPassthroughToolName,
   onRemovePassthroughToolName,
+  onToolSearchQueryChange,
   onSave,
   onCancel,
 }: DomainDetailPanelProps) {
@@ -63,6 +71,9 @@ export function DomainDetailPanel({
         availableTools={availableTools}
         isLoadingTools={isLoadingTools}
         toolsError={toolsError}
+        toolSearchHits={toolSearchHits}
+        isSearchingTools={isSearchingTools}
+        toolSearchError={toolSearchError}
         toolNames={toolNames}
         passthroughToolNames={passthroughToolNames}
         isSaving={isSaving}
@@ -74,6 +85,7 @@ export function DomainDetailPanel({
         onRemoveToolName={onRemoveToolName}
         onAddPassthroughToolName={onAddPassthroughToolName}
         onRemovePassthroughToolName={onRemovePassthroughToolName}
+        onToolSearchQueryChange={onToolSearchQueryChange}
         onSave={onSave}
         onCancel={onCancel}
       />

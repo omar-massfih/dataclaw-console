@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { createDomain, deleteDomain, listAgentTools, listDomains, replaceDomain } from './api';
+import {
+  createDomain,
+  deleteDomain,
+  listAgentTools,
+  listDomains,
+  replaceDomain,
+  searchDomainConfigs,
+  searchToolConfigs,
+} from './api';
 import {
   createDefaultDomainFormDraft,
   domainToFormDraft,
@@ -81,6 +89,13 @@ export function useDomainsPage() {
   const [availableTools, setAvailableTools] = useState<AgentToolInfo[]>([]);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
   const [toolsError, setToolsError] = useState<string | null>(null);
+  const [toolSearchQuery, setToolSearchQuery] = useState('');
+  const [toolSearchHits, setToolSearchHits] = useState<AgentToolInfo[]>([]);
+  const [isSearchingTools, setIsSearchingTools] = useState(false);
+  const [toolSearchError, setToolSearchError] = useState<string | null>(null);
+  const [domainSearchHits, setDomainSearchHits] = useState<string[]>([]);
+  const [isSearchingDomains, setIsSearchingDomains] = useState(false);
+  const [domainsSearchError, setDomainsSearchError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<DomainsViewMode>(() => {
     if (typeof window === 'undefined') return 'list';
     const stored = window.localStorage.getItem(DOMAINS_VIEW_MODE_STORAGE_KEY);
@@ -94,10 +109,21 @@ export function useDomainsPage() {
 
   const visibleDomains = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    return domains.filter((domain) =>
-      q ? domain.key.toLowerCase().includes(q) || domain.display_name.toLowerCase().includes(q) : true,
+    if (!q) return domains;
+
+    const localFiltered = domains.filter(
+      (domain) => domain.key.toLowerCase().includes(q) || domain.display_name.toLowerCase().includes(q),
     );
-  }, [domains, filter]);
+
+    if (domainsSearchError || domainSearchHits.length === 0) {
+      return localFiltered;
+    }
+
+    const byKey = new Map(domains.map((domain) => [domain.key, domain]));
+    return domainSearchHits
+      .map((key) => byKey.get(key))
+      .filter((domain): domain is DomainDraft => domain !== undefined);
+  }, [domainSearchHits, domains, domainsSearchError, filter]);
 
   const reloadList = useCallback(
     async (nextSelectedKey?: string | null) => {
@@ -150,6 +176,79 @@ export function useDomainsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const q = filter.trim();
+    if (!q) {
+      setIsSearchingDomains(false);
+      setDomainsSearchError(null);
+      setDomainSearchHits([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setIsSearchingDomains(true);
+      setDomainsSearchError(null);
+      void searchDomainConfigs({ q, top_k: 50, min_score: 0 }).then((result) => {
+        if (cancelled) return;
+        setIsSearchingDomains(false);
+        if (result.error) {
+          setDomainsSearchError(result.error.message);
+          return;
+        }
+        const keys = (result.data?.hits ?? [])
+          .map((hit) => hit.payload?.key)
+          .filter((key): key is string => typeof key === 'string' && key.trim().length > 0);
+        setDomainSearchHits(Array.from(new Set(keys)));
+      });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [filter]);
+
+  useEffect(() => {
+    const q = toolSearchQuery.trim();
+    if (!q) {
+      setIsSearchingTools(false);
+      setToolSearchError(null);
+      setToolSearchHits([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setIsSearchingTools(true);
+      setToolSearchError(null);
+      void searchToolConfigs({ q, top_k: 20, min_score: 0 }).then((result) => {
+        if (cancelled) return;
+        setIsSearchingTools(false);
+        if (result.error) {
+          setToolSearchHits([]);
+          setToolSearchError(result.error.message);
+          return;
+        }
+
+        const knownTools = new Map(availableTools.map((tool) => [tool.name, tool]));
+        const names = (result.data?.hits ?? [])
+          .map((hit) => hit.payload?.name)
+          .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+        const uniqueNames = Array.from(new Set(names));
+        const mapped = uniqueNames.map(
+          (name) => knownTools.get(name) ?? { name, description: '', arguments_schema: null },
+        );
+        setToolSearchHits(mapped);
+      });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [availableTools, toolSearchQuery]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -271,6 +370,9 @@ export function useDomainsPage() {
     setFormFieldError(null);
     setFormError(null);
     setSaveStatus('idle');
+    setToolSearchQuery('');
+    setToolSearchError(null);
+    setToolSearchHits([]);
   }, []);
 
   const removeToolName = useCallback((name: string) => {
@@ -318,6 +420,10 @@ export function useDomainsPage() {
     setFormFieldError(null);
     setFormError(null);
     setSaveStatus('idle');
+  }, []);
+
+  const updateToolSearchQuery = useCallback((query: string) => {
+    setToolSearchQuery(query);
   }, []);
 
   const saveForm = useCallback(async () => {
@@ -422,6 +528,12 @@ export function useDomainsPage() {
     availableTools,
     isLoadingTools,
     toolsError,
+    toolSearchQuery,
+    toolSearchHits,
+    isSearchingTools,
+    toolSearchError,
+    isSearchingDomains,
+    domainsSearchError,
     pendingDeleteKey,
     viewMode,
     setFilter,
@@ -440,6 +552,7 @@ export function useDomainsPage() {
     removeToolName,
     addPassthroughToolName,
     removePassthroughToolName,
+    setToolSearchQuery: updateToolSearchQuery,
     saveForm,
     removeSelected,
     reloadList,
