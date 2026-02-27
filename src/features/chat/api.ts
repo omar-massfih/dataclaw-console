@@ -1,6 +1,26 @@
 import { getEnv } from '../../lib/env';
 import type { ChatApiErrorPayload, ChatModelInfo, ChatProgressEvent, ChatRequestInput } from './types';
 
+const CHAT_DEBUG = import.meta.env.DEV;
+
+function logChatDebug(message: string, details?: Record<string, unknown>) {
+  if (!CHAT_DEBUG) {
+    return;
+  }
+  if (details) {
+    console.debug(message, details);
+    return;
+  }
+  console.debug(message);
+}
+
+function previewText(text: string, limit = 120): string {
+  if (text.length <= limit) {
+    return text;
+  }
+  return `${text.slice(0, limit)}...`;
+}
+
 interface StartChatCompletionStreamHandlers {
   onToken: (token: string) => void;
   onDone: () => void;
@@ -74,10 +94,17 @@ function processSseEventBlock(
     }
   }
   const rawData = dataParts.join('\n').trim();
+  logChatDebug('[chat-stream] event_block', {
+    event: eventName,
+    isDone: rawData === '[DONE]',
+    rawLen: rawData.length,
+    preview: previewText(rawData),
+  });
   if (!rawData) {
     return { keepReading: true, doneReceived: false };
   }
   if (rawData === '[DONE]') {
+    logChatDebug('[chat-stream] done_received');
     handlers.onDone();
     return { keepReading: false, doneReceived: true };
   }
@@ -91,20 +118,43 @@ function processSseEventBlock(
         typeof progress.type === 'string' &&
         (progress.type === 'agent_stage' || progress.type === 'tool_start' || progress.type === 'tool_end')
       ) {
+        logChatDebug('[chat-stream] progress', {
+          type: progress.type,
+          agent: 'agent' in progress ? progress.agent : undefined,
+          stage: 'stage' in progress ? progress.stage : undefined,
+          accepted: true,
+        });
         handlers.onProgress?.(progress as ChatProgressEvent);
+      } else {
+        logChatDebug('[chat-stream] progress', {
+          accepted: false,
+        });
       }
       return { keepReading: true, doneReceived: false };
     }
     const chunk = parsed as { choices?: { delta?: { content?: string } }[] };
     const token = chunk.choices?.[0]?.delta?.content;
     if (typeof token === 'string' && token.length > 0) {
+      logChatDebug('[chat-stream] token parsed', {
+        len: token.length,
+        preview: previewText(token),
+      });
       handlers.onToken(token);
+    } else {
+      logChatDebug('[chat-stream] no_token_in_chunk');
     }
     return { keepReading: true, doneReceived: false };
   } catch {
     if (eventName === 'progress') {
+      logChatDebug('[chat-stream] progress_parse_error_ignored', {
+        preview: previewText(rawData),
+      });
       return { keepReading: true, doneReceived: false };
     }
+    logChatDebug('[chat-stream] parse_error', {
+      event: eventName,
+      preview: previewText(rawData),
+    });
     handlers.onError('Invalid streaming payload received from chat endpoint.');
     return { keepReading: false, doneReceived: false };
   }

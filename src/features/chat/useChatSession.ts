@@ -12,6 +12,25 @@ import type {
 const DEFAULT_MODEL = '';
 const FALLBACK_AGENT_LABEL = 'Thinking';
 const FALLBACK_AGENT_NAME = 'Orchestrator';
+const CHAT_DEBUG = import.meta.env.DEV;
+
+function logChatDebug(message: string, details?: Record<string, unknown>) {
+  if (!CHAT_DEBUG) {
+    return;
+  }
+  if (details) {
+    console.debug(message, details);
+    return;
+  }
+  console.debug(message);
+}
+
+function previewText(text: string, limit = 120): string {
+  if (text.length <= limit) {
+    return text;
+  }
+  return `${text.slice(0, limit)}...`;
+}
 
 function createMessageId(prefix: 'user' | 'assistant'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -97,6 +116,7 @@ export function useChatSession() {
 
   const stopStreaming = () => {
     const assistantId = activeAssistantIdRef.current;
+    logChatDebug('[chat-session] stop', { assistantId });
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
     setIsStreaming(false);
@@ -385,6 +405,13 @@ export function useChatSession() {
     };
 
     const nextConversation = normalizeConversation([...messages, userMessage]);
+    logChatDebug('[chat-session] send start', {
+      userId: userMessage.id,
+      assistantId: assistantMessage.id,
+      currentMessageCount: messages.length,
+      model,
+      userLen: userContent.length,
+    });
     setMessages((current) => [...current, userMessage, assistantMessage]);
     setIsStreaming(true);
     setAssistantProgressByMessageId((current) => ({
@@ -400,17 +427,35 @@ export function useChatSession() {
       },
       {
         onToken: (token) => {
+          const assistantId = activeAssistantIdRef.current;
+          logChatDebug('[chat-session] onToken received', {
+            assistantId,
+            isNull: !assistantId,
+            len: token.length,
+            preview: previewText(token),
+          });
+          if (!assistantId) {
+            return;
+          }
           setMessages((current) =>
             current.map((message) => {
-              if (message.id !== activeAssistantIdRef.current) {
+              if (message.id !== assistantId) {
                 return message;
               }
-              return { ...message, content: `${message.content}${token}` };
+              const nextContent = `${message.content}${token}`;
+              logChatDebug('[chat-session] onToken append', {
+                assistantId,
+                messageCount: current.length,
+                prevLen: message.content.length,
+                nextLen: nextContent.length,
+              });
+              return { ...message, content: nextContent };
             }),
           );
         },
         onDone: () => {
           const assistantId = activeAssistantIdRef.current;
+          logChatDebug('[chat-session] onDone', { assistantId, isNull: !assistantId });
           setMessages((current) =>
             current.map((message) => {
               if (message.id !== assistantId || message.status !== 'streaming') {
@@ -424,10 +469,12 @@ export function useChatSession() {
             finalizeMessageProgress(assistantId);
           }
           streamAbortRef.current = null;
+          logChatDebug('[chat-session] onDone clear_active_ref', { assistantId });
           activeAssistantIdRef.current = null;
         },
         onError: (message) => {
           const assistantId = activeAssistantIdRef.current;
+          logChatDebug('[chat-session] onError', { assistantId, message });
           setChatError(message);
           setMessages((current) => {
             if (!assistantId) {
@@ -438,8 +485,15 @@ export function useChatSession() {
                 return [entry];
               }
               if (entry.content.trim().length === 0) {
+                logChatDebug('[chat-session] onError remove_empty_assistant', {
+                  assistantId,
+                });
                 return [];
               }
+              logChatDebug('[chat-session] onError mark_error', {
+                assistantId,
+                contentLen: entry.content.length,
+              });
               return [{ ...entry, status: 'error' as const }];
             });
           });

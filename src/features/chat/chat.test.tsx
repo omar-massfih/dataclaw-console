@@ -440,4 +440,26 @@ describe('ChatPage', () => {
         .length,
     ).toBeGreaterThan(0);
   });
+
+  it('keeps the final token when content is immediately followed by stop and done', async () => {
+    mockChatFetch({
+      chatResponse: createSseResponse([
+        'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"I need required inputs for geo_show_map: lon. Please provide them."}}]}\n\n',
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    });
+
+    render(<ChatHarness />);
+    expect(await screen.findByLabelText(/^model$/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/message/i), { target: { value: 'show nearest ship to oslo' } });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    await screen.findByText(/I need required inputs for geo/i);
+    await screen.findByText(/map: lon\. Please provide them\./i);
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/generating response/i)).not.toBeInTheDocument();
+    });
+  });
 });
