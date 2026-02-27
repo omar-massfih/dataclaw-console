@@ -5,7 +5,6 @@ import { useConnectorsPage } from './useConnectorsPage';
 
 export function ConnectorsPage() {
   const state = useConnectorsPage();
-  const isFormView = state.mode === 'create' || state.mode === 'edit';
 
   const list = (
     <ConnectorList
@@ -33,8 +32,6 @@ export function ConnectorsPage() {
       formError={state.formError}
       formFieldError={state.formFieldError}
       pageError={state.pageError}
-      validateResult={state.validateResult}
-      exportResult={state.exportResult}
       reloadWarning={state.reloadWarning}
       isSaving={state.isSaving}
       saveStatus={state.saveStatus}
@@ -54,19 +51,13 @@ export function ConnectorsPage() {
       <Inline justify="between" align="center" wrap gap={12} className="connectors-toolbar">
         <Stack gap={4}>
           <Text as="h2" variant="h2" weight="bold">
-            Connectors Config (V1)
+            Connectors Config
           </Text>
           <Text tone="muted">
-            SQLite draft store + backend validation + YAML export.
+            Create and manage connector configs.
           </Text>
         </Stack>
         <Inline gap={12} wrap>
-          <Button type="button" variant="secondary" onClick={() => void state.runValidate()} isLoading={state.isValidating}>
-            Validate all
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => void state.runExport()} isLoading={state.isExporting}>
-            Export YAML
-          </Button>
           <Button type="button" variant="primary" onClick={state.beginCreate}>
             New connector
           </Button>
@@ -76,20 +67,17 @@ export function ConnectorsPage() {
       <Surface as="section" className="connectors-runtime-summary" padding={16}>
         <Stack gap={8}>
           <Text as="h3" variant="h3" weight="bold">
-            Runtime visibility
+            Runtime status
           </Text>
           <Text variant="small" tone="muted">
-            Generation {state.runtimeInfo?.generation ?? 0} · active connectors:{' '}
-            {state.runtimeInfo?.active_connector_ids.length ?? 0}
+            Runtime: {state.runtimeInfo?.last_reload?.succeeded ? 'healthy' : 'issue detected'}
           </Text>
           <Text variant="small" tone="muted">
-            Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} ·
-            trigger={state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason=
-            {state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
+            Active connectors: {state.runtimeInfo?.active_connector_ids.length ?? 0}
           </Text>
           <Text variant="small" tone="muted">
-            Import: attempted={String(state.importState?.attempted ?? false)} · succeeded=
-            {String(state.importState?.succeeded ?? false)} · result={state.importState?.last_import_result ?? 'unknown'}
+            Last reload: {state.runtimeInfo?.last_reload?.succeeded ? 'ok' : 'not ok'} · trigger=
+            {state.runtimeInfo?.last_reload?.trigger ?? 'n/a'} · reason={state.runtimeInfo?.last_reload?.reason ?? 'n/a'}
           </Text>
         </Stack>
       </Surface>
@@ -100,7 +88,7 @@ export function ConnectorsPage() {
         </Surface>
       ) : null}
 
-      {!isFormView ? (
+      {state.viewMode === 'list' ? (
         <Surface as="section" className="connectors-view" padding={24}>
           <Stack gap={12}>
             <Text as="h2" variant="h2" weight="bold">

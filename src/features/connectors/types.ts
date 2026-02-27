@@ -90,19 +90,6 @@ export interface DeleteConnectorResponse {
   error?: MutationInlineError;
 }
 
-export interface ValidateConnectorsResponse {
-  validated: true;
-  connector_count: number;
-  connector_ids: string[];
-}
-
-export interface ExportConnectorsResponse {
-  yaml: string;
-  connector_count: number;
-  connector_ids: string[];
-  validated: true;
-}
-
 export interface ApiErrorEnvelope {
   error: {
     message: string;

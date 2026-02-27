@@ -38,7 +38,7 @@
   --line-height-body: 1.5;
   --line-height-small: 1.4;
 
-  /* Spacing scale (locked): 4, 8, 12, 16, 24, 32, 48. */
+  /* Spacing scale: 4, 8, 12, 16, 24, 32, 48, 64, 80, 96. */
   --space-4: 0.25rem;
   --space-8: 0.5rem;
   --space-12: 0.75rem;
@@ -46,6 +46,9 @@
   --space-24: 1.5rem;
   --space-32: 2rem;
   --space-48: 3rem;
+  --space-64: 4rem;
+  --space-80: 5rem;
+  --space-96: 6rem;
 
   /* Minimal supporting scales. */
   --radius-sm: 0px;

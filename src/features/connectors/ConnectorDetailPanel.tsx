@@ -5,8 +5,6 @@ import type {
   ConnectorFormDraft,
   ConnectorFormFieldError,
   EditorMode,
-  ExportConnectorsResponse,
-  ValidateConnectorsResponse,
 } from './types';
 
 interface ConnectorDetailPanelProps {
@@ -16,8 +14,6 @@ interface ConnectorDetailPanelProps {
   formError: string | null;
   formFieldError: ConnectorFormFieldError | null;
   pageError: string | null;
-  validateResult: ValidateConnectorsResponse | null;
-  exportResult: ExportConnectorsResponse | null;
   reloadWarning: string | null;
   isSaving: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
@@ -39,8 +35,6 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
     formError,
     formFieldError,
     pageError,
-    validateResult,
-    exportResult,
     reloadWarning,
     isSaving,
     saveStatus,
@@ -127,35 +121,6 @@ export function ConnectorDetailPanel(props: ConnectorDetailPanelProps) {
       {reloadWarning ? (
         <Surface as="section" className="connectors-warning" padding={16}>
           <Text weight="bold">{reloadWarning}</Text>
-        </Surface>
-      ) : null}
-
-      {validateResult ? (
-        <Surface as="section">
-          <Stack gap={8}>
-            <Text as="h3" variant="h3" weight="bold">
-              Validation result
-            </Text>
-            <Text tone="muted">
-              Validated {validateResult.connector_count} connector(s): {validateResult.connector_ids.join(', ') || '(none)'}
-            </Text>
-          </Stack>
-        </Surface>
-      ) : null}
-
-      {exportResult ? (
-        <Surface as="section">
-          <Stack gap={12}>
-            <Text as="h3" variant="h3" weight="bold">
-              YAML export
-            </Text>
-            <Text tone="muted">
-              {exportResult.connector_count} connector(s) · validated={String(exportResult.validated)}
-            </Text>
-            <pre className="connectors-export">
-              <code>{exportResult.yaml}</code>
-            </pre>
-          </Stack>
         </Surface>
       ) : null}
     </Stack>

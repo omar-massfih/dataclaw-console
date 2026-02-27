@@ -98,7 +98,7 @@ describe('ConnectorsPage', () => {
 
     const list = await screen.findByRole('list', { name: /connector drafts/i });
     expect(within(list).getAllByRole('button').length).toBeGreaterThan(0);
-    expect(screen.getByText(/generation 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/runtime:\s*healthy/i)).toBeInTheDocument();
     expect(screen.getByText(/active connectors:\s*1/i)).toBeInTheDocument();
 
     fireEvent.click(within(list).getByRole('button', { name: /sql_reader_local/i }));
@@ -257,7 +257,7 @@ describe('ConnectorsPage', () => {
 
     expect((await screen.findAllByText(/saved but runtime reload failed/i)).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /^saved$/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /edit connector: sql_reader_new/i })).toBeInTheDocument();
+    expect(screen.getByText(/edit connector: sql_reader_new/i)).toBeInTheDocument();
   });
 
   it('opens detail edit from list actions and locks id/kind in edit mode', async () => {
@@ -376,30 +376,6 @@ describe('ConnectorsPage', () => {
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('sql_reader_local'));
     expect((await screen.findAllByText(/deleted but runtime reload failed/i)).length).toBeGreaterThan(0);
-  });
-
-  it('supports validate and export actions', async () => {
-    mockList([sqlConnector]);
-    const validateSpy = vi.spyOn(connectorsApi, 'validateConnectors').mockResolvedValue({
-      data: { validated: true, connector_count: 1, connector_ids: ['sql_reader_local'] },
-      error: null,
-    });
-    const exportSpy = vi.spyOn(connectorsApi, 'exportConnectors').mockResolvedValue({
-      data: {
-        yaml: 'connectors:\n  - id: sql_reader_local\n',
-        connector_count: 1,
-        connector_ids: ['sql_reader_local'],
-        validated: true,
-      },
-      error: null,
-    });
-
-    render(<ConnectorsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: /validate all/i }));
-    await waitFor(() => expect(validateSpy).toHaveBeenCalled());
-
-    fireEvent.click(screen.getByRole('button', { name: /export yaml/i }));
-    await waitFor(() => expect(exportSpy).toHaveBeenCalled());
   });
 
   it('restores stored detail preference but falls back to list when no selection exists', async () => {

@@ -1,48 +1,159 @@
+import { useEffect, useState } from 'react';
+
+import chainLogo from './assets/chain.svg';
 import { AppShell } from './components/layouts';
-import { Stack, Surface, Text } from './components/primitives';
 import { ConnectorsPage } from './features/connectors';
 
+const SIDEBAR_EXPANDED_STORAGE_KEY = 'app.sidebarExpanded.v1';
+
+interface NavItem {
+  id: 'connectors' | 'domains' | 'runs';
+  label: string;
+  meta: string;
+  active?: boolean;
+  disabled?: boolean;
+}
+
+const navItems: NavItem[] = [
+  { id: 'connectors', label: 'Connectors', meta: 'Config drafts', active: true },
+  { id: 'domains', label: 'Domains', meta: 'Runtime health' },
+  { id: 'runs', label: 'Runs', meta: 'Coming soon', disabled: true },
+];
+
+function ConnectorsIcon() {
+  return <img src={chainLogo} alt="" className="app-nav__icon-image" aria-hidden="true" />;
+}
+
+function DomainsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M4 12h16M12 4a14 14 0 0 1 0 16M12 4a14 14 0 0 0 0 16" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function RunsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 19h12M8 7h8l-1 8H9L8 7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M10 3h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={expanded ? '' : 'is-collapsed'}>
+      <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function getIcon(id: NavItem['id']) {
+  if (id === 'connectors') {
+    return <ConnectorsIcon />;
+  }
+
+  if (id === 'domains') {
+    return <DomainsIcon />;
+  }
+
+  return <RunsIcon />;
+}
+
+function getInitialSidebarExpanded() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const stored = window.localStorage.getItem(SIDEBAR_EXPANDED_STORAGE_KEY);
+  if (stored === 'true') {
+    return true;
+  }
+
+  if (stored === 'false') {
+    return false;
+  }
+
+  return false;
+}
+
 export default function App() {
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(getInitialSidebarExpanded);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_EXPANDED_STORAGE_KEY, String(sidebarExpanded));
+  }, [sidebarExpanded]);
+
+  const toggleLabel = sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar';
+  const sidebarClassName = sidebarExpanded ? 'app-sidebar app-sidebar--expanded' : 'app-sidebar app-sidebar--collapsed';
+  const appShellClassName = sidebarExpanded
+    ? 'layout-app-shell--sidebar-expanded'
+    : 'layout-app-shell--sidebar-collapsed';
+
   const sidebar = (
-    <Stack gap={12} className="app-sidebar">
-      <Surface as="section" aria-labelledby="sidebar-title">
-        <Stack gap={12}>
-          <Text as="h2" variant="h3" weight="bold" id="sidebar-title">
-            DataClaw Console
-          </Text>
-          <Text variant="small" tone="muted">
-            Admin operations
-          </Text>
-          <nav aria-label="Primary navigation">
-            <ul className="app-nav">
-              <li className="app-nav__item">
-                <button type="button" className="app-nav__link" aria-current="page">
-                  <span>Connectors</span>
-                  <span className="app-nav__meta">Config drafts</span>
+    <section className={sidebarClassName} data-expanded={sidebarExpanded ? 'true' : 'false'} aria-labelledby="sidebar-title">
+      <div className="app-sidebar__header">
+        <div className="app-sidebar__branding">
+          <span className="app-sidebar__logo" aria-hidden="true">
+            D
+          </span>
+          <div className="app-sidebar__branding-copy">
+            <h2 id="sidebar-title" className="app-sidebar__title">
+              DataClaw Console
+            </h2>
+            <p className="app-sidebar__subtext">Admin operations</p>
+          </div>
+        </div>
+      </div>
+
+      <nav aria-label="Primary navigation" className="app-sidebar__nav">
+        <ul className="app-nav">
+          {navItems.map((item) => {
+            const title = `${item.label} - ${item.meta}`;
+
+            return (
+              <li key={item.id} className="app-nav__item">
+                <button
+                  type="button"
+                  className="app-nav__link"
+                  aria-current={item.active ? 'page' : undefined}
+                  data-disabled={item.disabled ? 'true' : undefined}
+                  disabled={item.disabled}
+                  aria-label={item.label}
+                  title={title}
+                >
+                  <span className="app-nav__icon">{getIcon(item.id)}</span>
+                  <span className="app-nav__content">
+                    <span className="app-nav__label">{item.label}</span>
+                    <span className="app-nav__meta">{item.meta}</span>
+                  </span>
                 </button>
               </li>
-              <li className="app-nav__item">
-                <button type="button" className="app-nav__link">
-                  <span>Domains</span>
-                  <span className="app-nav__meta">Runtime health</span>
-                </button>
-              </li>
-              <li className="app-nav__item">
-                <button type="button" className="app-nav__link" data-disabled="true" disabled>
-                  <span>Runs</span>
-                  <span className="app-nav__meta">Coming soon</span>
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </Stack>
-      </Surface>
-    </Stack>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="app-sidebar__footer">
+        <button
+          type="button"
+          className="app-sidebar__toggle"
+          onClick={() => setSidebarExpanded((current) => !current)}
+          aria-pressed={sidebarExpanded}
+          aria-label={toggleLabel}
+          title={toggleLabel}
+        >
+          <ChevronIcon expanded={sidebarExpanded} />
+        </button>
+      </div>
+    </section>
   );
 
   return (
     <main className="app-shell">
-      <AppShell sidebar={sidebar}>
+      <AppShell sidebar={sidebar} className={appShellClassName}>
         <ConnectorsPage />
       </AppShell>
     </main>

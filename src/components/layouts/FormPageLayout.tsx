@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Stack, Surface, Text } from '../primitives';
 
 interface FormPageLayoutProps {
-  title: ReactNode;
+  title?: ReactNode;
   description?: ReactNode;
   sections: ReactNode;
   actions: ReactNode;
@@ -19,18 +19,26 @@ export function FormPageLayout({
   aside,
   className,
 }: FormPageLayoutProps) {
-  const classes = ['layout-form-page', className ?? ''].filter(Boolean).join(' ');
+  const classes = ['layout-form-page', aside ? 'layout-form-page--with-aside' : '', className ?? '']
+    .filter(Boolean)
+    .join(' ');
+  const hasTitle =
+    typeof title === 'string' ? title.trim().length > 0 : title !== null && title !== undefined;
 
   return (
     <section className={classes} aria-label="Form page layout">
       <Stack gap={16} className="layout-form-page__header">
-        {typeof title === 'string' ? (
-          <Text as="h1" variant="h1" weight="bold">
-            {title}
-          </Text>
-        ) : (
-          title
-        )}
+        {hasTitle
+          ? typeof title === 'string'
+            ? (
+                <Text as="h1" variant="h1" weight="bold">
+                  {title}
+                </Text>
+              )
+            : (
+                title
+              )
+          : null}
         {description
           ? typeof description === 'string'
             ? (

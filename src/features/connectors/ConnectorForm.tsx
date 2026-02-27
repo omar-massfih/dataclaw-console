@@ -30,8 +30,6 @@ export function ConnectorForm({
   onSave,
   onCancel,
 }: ConnectorFormProps) {
-  const title = mode === 'create' ? 'Create connector' : `Edit connector: ${draft.id}`;
-
   const sections = (
     <>
       <Surface as="section">
@@ -127,8 +125,8 @@ export function ConnectorForm({
   return (
     <FormPageLayout
       className="connectors-detail"
-      title={title}
-      description="Connector drafts are stored in SQLite and validated against backend connector schema rules."
+      title=""
+      description=""
       sections={sections}
       actions={actions}
     />

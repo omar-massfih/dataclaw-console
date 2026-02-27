@@ -7,8 +7,6 @@ import type {
   ConnectorsListResponse,
   CreateOrUpdateConnectorResponse,
   DeleteConnectorResponse,
-  ExportConnectorsResponse,
-  ValidateConnectorsResponse,
 } from './types';
 
 type ApiResult<T> =
@@ -91,16 +89,4 @@ export function deleteConnector(connectorId: string) {
     },
     { preserveDataOnError: true },
   );
-}
-
-export function validateConnectors() {
-  return requestJson<ValidateConnectorsResponse>('/api/config/connectors/validate', {
-    method: 'POST',
-  });
-}
-
-export function exportConnectors() {
-  return requestJson<ExportConnectorsResponse>('/api/config/connectors/export', {
-    method: 'POST',
-  });
 }

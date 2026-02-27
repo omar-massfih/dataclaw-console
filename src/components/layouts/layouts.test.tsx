@@ -49,4 +49,19 @@ describe('layout templates', () => {
     expect(screen.getByText(/help panel/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
   });
+
+  it('FormPageLayout hides title when it is empty', () => {
+    render(
+      <FormPageLayout
+        title="   "
+        description="Configure a new domain"
+        sections={<div>Section body</div>}
+        actions={<button type="button">Save</button>}
+      />,
+    );
+
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByText(/configure a new domain/i)).toBeInTheDocument();
+    expect(screen.getByText(/section body/i)).toBeInTheDocument();
+  });
 });

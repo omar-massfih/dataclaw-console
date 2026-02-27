@@ -3,10 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createConnector,
   deleteConnector,
-  exportConnectors,
   listConnectors,
   replaceConnector,
-  validateConnectors,
 } from './api';
 import {
   connectorToFormDraft,
@@ -23,10 +21,8 @@ import type {
   CreateOrUpdateConnectorResponse,
   DeleteConnectorResponse,
   EditorMode,
-  ExportConnectorsResponse,
   ImportStatePayload,
   RuntimePayload,
-  ValidateConnectorsResponse,
 } from './types';
 
 const CONNECTORS_VIEW_MODE_STORAGE_KEY = 'connectors.viewMode.v1';
@@ -74,10 +70,6 @@ export function useConnectorsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [validateResult, setValidateResult] = useState<ValidateConnectorsResponse | null>(null);
-  const [exportResult, setExportResult] = useState<ExportConnectorsResponse | null>(null);
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimePayload | null>(null);
   const [importState, setImportState] = useState<ImportStatePayload | null>(null);
   const [reloadWarning, setReloadWarning] = useState<string | null>(null);
@@ -126,10 +118,6 @@ export function useConnectorsPage() {
       const finalSelection = selectedExists ? preferred : (next[0]?.id ?? null);
       setSelectedConnectorId(finalSelection);
 
-      if (!next.length) {
-        setExportResult(null);
-        setValidateResult(null);
-      }
     },
     [selectedConnectorId],
   );
@@ -382,30 +370,6 @@ export function useConnectorsPage() {
     setPendingDeleteId(null);
   }, [removeSelected, selectedConnectorId]);
 
-  const runValidate = useCallback(async () => {
-    setIsValidating(true);
-    setPageError(null);
-    const result = await validateConnectors();
-    setIsValidating(false);
-    if (result.error) {
-      setPageError(normalizeError(result.error));
-      return;
-    }
-    setValidateResult(result.data);
-  }, []);
-
-  const runExport = useCallback(async () => {
-    setIsExporting(true);
-    setPageError(null);
-    const result = await exportConnectors();
-    setIsExporting(false);
-    if (result.error) {
-      setPageError(normalizeError(result.error));
-      return;
-    }
-    setExportResult(result.data);
-  }, []);
-
   return {
     connectors,
     visibleConnectors,
@@ -421,10 +385,6 @@ export function useConnectorsPage() {
     isSaving,
     saveStatus,
     isDeleting,
-    isValidating,
-    isExporting,
-    validateResult,
-    exportResult,
     runtimeInfo,
     importState,
     reloadWarning,
@@ -448,8 +408,6 @@ export function useConnectorsPage() {
     setFormKind,
     saveForm,
     removeSelected,
-    runValidate,
-    runExport,
     reloadList,
   };
 }
